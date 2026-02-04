@@ -47,9 +47,13 @@ import {
   Tag,
   Archive,
   Trash2,
+  Settings2,
 } from "lucide-react";
 import { useBookmarksStore } from "@/store/bookmarks-store";
-import { collections, tags } from "@/mock-data/bookmarks";
+import { useCollectionsStore } from "@/store/collections-store";
+import { useTagsStore } from "@/store/tags-store";
+import { ManageCollectionsDialog } from "@/components/dashboard/manage-collections-dialog";
+import { ManageTagsDialog } from "@/components/dashboard/manage-tags-dialog";
 
 const collectionIcons: Record<string, React.ElementType> = {
   bookmark: Bookmark,
@@ -72,6 +76,10 @@ export function BookmarksSidebar({
   const pathname = usePathname();
   const [collectionsOpen, setCollectionsOpen] = React.useState(true);
   const [tagsOpen, setTagsOpen] = React.useState(true);
+  const [isManageDialogOpen, setIsManageDialogOpen] = React.useState(false);
+  const [isManageTagsDialogOpen, setIsManageTagsDialogOpen] = React.useState(false);
+  const { collections } = useCollectionsStore();
+  const { tags } = useTagsStore();
   const {
     selectedCollection,
     setSelectedCollection,
@@ -86,62 +94,14 @@ export function BookmarksSidebar({
     <Sidebar collapsible="offcanvas" className="lg:border-r-0!" {...props}>
       <SidebarHeader className="p-5 pb-0">
         <div className="flex items-center justify-between">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 outline-none">
-              <div className="size-7 rounded-full overflow-hidden bg-linear-to-br from-blue-400 via-indigo-500 to-violet-500 flex items-center justify-center ring-1 ring-white/40 shadow-lg" />
-              <span className="font-medium text-muted-foreground">
-                Square UI
-              </span>
-              <ChevronDown className="size-3 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel className="text-muted-foreground text-xs font-medium">
-                Workspaces
-              </DropdownMenuLabel>
-              <DropdownMenuItem>
-                <div className="size-5 rounded-full bg-linear-to-br from-blue-400 via-indigo-500 to-violet-500 mr-2" />
-                Square UI
-                <Check className="size-4 ml-auto" />
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="size-5 rounded-full bg-linear-to-br from-emerald-400 to-cyan-500 mr-2" />
-                Personal
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="size-5 rounded-full bg-linear-to-br from-orange-400 to-rose-500 mr-2" />
-                Work
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem>
-                <Plus className="size-4 mr-2" />
-                Create Workspace
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem>
-                <User className="size-4 mr-2" />
-                Account Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="size-4 mr-2" />
-                Workspace Settings
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem className="text-destructive">
-                <LogOut className="size-4 mr-2" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
           <Avatar className="size-6.5">
             <AvatarImage src="/ln.png" />
             <AvatarFallback>LN</AvatarFallback>
           </Avatar>
+          <button className="text-destructive flex items-center gap-2 cursor-pointer">
+            <LogOut className="size-4 mr-2" />
+            Log out
+          </button>
         </div>
       </SidebarHeader>
 
@@ -170,6 +130,13 @@ export function BookmarksSidebar({
                 )}
               />
               COLLECTIONS
+            </button>
+            <button
+              onClick={() => setIsManageDialogOpen(true)}
+              className="ml-auto p-1 hover:bg-muted rounded transition-colors"
+              title="Manage collections"
+            >
+              <Settings2 className="size-3.5" />
             </button>
           </SidebarGroupLabel>
           {collectionsOpen && (
@@ -213,7 +180,7 @@ export function BookmarksSidebar({
         </SidebarGroup>
 
         <SidebarGroup className="p-0">
-          <SidebarGroupLabel className="flex items-center gap-1.5 px-0 text-[10px] font-semibold tracking-wider text-muted-foreground">
+          <SidebarGroupLabel className="flex justify-between items-center gap-1.5 px-0 text-[10px] font-semibold tracking-wider text-muted-foreground">
             <button
               onClick={() => setTagsOpen(!tagsOpen)}
               className="flex items-center gap-1.5 cursor-pointer"
@@ -225,6 +192,13 @@ export function BookmarksSidebar({
                 )}
               />
               TAGS
+            </button>
+            <button
+              onClick={() => setIsManageTagsDialogOpen(true)}
+              className="p-1 hover:bg-muted rounded transition-colors"
+              title="Manage tags"
+            >
+              <Settings2 className="size-3.5" />
             </button>
             {selectedTags.length > 0 && (
               <button
@@ -283,17 +257,15 @@ export function BookmarksSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="px-5 pb-5">
-        <Link
-          href="https://github.com/ln-dev7/square-ui"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md border border-border bg-background hover:bg-muted shadow-xs text-sm font-medium w-full"
-        >
-          <Globe className="size-4" />
-          square.lndev.me
-        </Link>
-      </SidebarFooter>
-    </Sidebar>
+      <ManageCollectionsDialog
+        open={isManageDialogOpen}
+        onOpenChange={setIsManageDialogOpen}
+      />
+
+      <ManageTagsDialog
+        open={isManageTagsDialogOpen}
+        onOpenChange={setIsManageTagsDialogOpen}
+      />
+    </Sidebar >
   );
 }

@@ -9,6 +9,8 @@ export type Bookmark = {
   createdAt: string;
   isFavorite: boolean;
   hasDarkIcon?: boolean;
+  duration?: string;
+  thumbnail?: string;
 };
 
 export type Collection = {

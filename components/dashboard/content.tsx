@@ -1,7 +1,8 @@
 "use client";
 
 import { useBookmarksStore } from "@/store/bookmarks-store";
-import { collections, tags } from "@/mock-data/bookmarks";
+import { useCollectionsStore } from "@/store/collections-store";
+import { useTagsStore } from "@/store/tags-store";
 import { BookmarkCard } from "./bookmark-card";
 import { StatsCards } from "./stats-cards";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,8 @@ export function BookmarksContent() {
     setFilterType,
     sortBy,
   } = useBookmarksStore();
+  const { collections } = useCollectionsStore();
+  const { tags } = useTagsStore();
   const filteredBookmarks = getFilteredBookmarks();
 
   const currentCollection = collections.find(

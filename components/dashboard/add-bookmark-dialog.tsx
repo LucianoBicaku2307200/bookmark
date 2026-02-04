@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBookmarksStore } from "@/store/bookmarks-store";
-import { collections, tags as allTags } from "@/mock-data/bookmarks";
+import { useCollectionsStore } from "@/store/collections-store";
+import { useTagsStore } from "@/store/tags-store";
+import { Loader2 } from "lucide-react";
 
 interface AddBookmarkDialogProps {
   open: boolean;
@@ -22,6 +24,9 @@ interface AddBookmarkDialogProps {
 
 export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps) {
   const addBookmark = useBookmarksStore((state) => state.addBookmark);
+  const { collections, addCollection } = useCollectionsStore();
+  const { tags: allTags } = useTagsStore();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     url: "",
@@ -31,17 +36,101 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
     tags: [] as string[],
     isFavorite: false,
     hasDarkIcon: false,
+    isYoutubeVideo: false,
+    duration: "",
+    thumbnail: "",
   });
+
+  const fetchYoutubeData = async () => {
+    if (!formData.url) return;
+
+    setIsLoading(true);
+    try {
+      // Extract video ID from URL
+      const videoIdMatch = formData.url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      const videoId = videoIdMatch ? videoIdMatch[1] : null;
+
+      if (!videoId) {
+        console.error("Could not extract video ID");
+        return;
+      }
+
+      const API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY;
+      const YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/videos";
+
+      const response = await fetch(
+        `${YOUTUBE_API_URL}?part=contentDetails,snippet&id=${videoId}&key=${API_KEY}`
+      );
+      const data = await response.json();
+
+      if (data.items && data.items.length > 0) {
+        const item = data.items[0];
+        const snippet = item.snippet;
+        const contentDetails = item.contentDetails;
+
+        // Ensure youtube collection exists
+        const youtubeCollectionExists = collections.some(c => c.id === "youtube");
+        if (!youtubeCollectionExists) {
+            addCollection({
+                name: "Youtube",
+                icon: "brand-youtube", 
+                color: "red" 
+            });
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          title: snippet.title,
+          description: snippet.description.substring(0, 300) + (snippet.description.length > 300 ? "..." : ""),
+          duration: contentDetails.duration.replace("PT", "").replace("H", ":").replace("M", ":").replace("S", ""),
+          thumbnail: snippet.thumbnails?.high?.url || snippet.thumbnails?.medium?.url || snippet.thumbnails?.default?.url,
+          collectionId: "youtube",
+          favicon: "" // Clear favicon to prefer thumbnail
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching YouTube data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleYoutubeCheck = (checked: boolean) => {
+    setFormData(prev => ({ 
+        ...prev, 
+        isYoutubeVideo: checked,
+        collectionId: checked ? "youtube" : prev.collectionId 
+    }));
+    
+    if (checked && formData.url && !formData.title) {
+        fetchYoutubeData();
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Auto-generate favicon if not provided
-    const favicon = formData.favicon || `https://www.google.com/s2/favicons?domain=${new URL(formData.url).hostname}&sz=64`;
+    // Auto-generate favicon if not provided and not youtube video
+    let favicon = formData.favicon;
+    if (!favicon && !formData.isYoutubeVideo && formData.url) {
+        try {
+            favicon = `https://www.google.com/s2/favicons?domain=${new URL(formData.url).hostname}&sz=64`;
+        } catch (e) {
+            // Invalid URL, ignore
+        }
+    }
     
     addBookmark({
-      ...formData,
-      favicon,
+      title: formData.title,
+      url: formData.url,
+      description: formData.description,
+      favicon: favicon,
+      collectionId: formData.collectionId,
+      tags: formData.tags,
+      isFavorite: formData.isFavorite,
+      hasDarkIcon: formData.hasDarkIcon,
+      duration: formData.isYoutubeVideo ? formData.duration : undefined,
+      thumbnail: formData.isYoutubeVideo ? formData.thumbnail : undefined,
     });
     
     // Reset form
@@ -54,6 +143,9 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
       tags: [],
       isFavorite: false,
       hasDarkIcon: false,
+      isYoutubeVideo: false,
+      duration: "",
+      thumbnail: "",
     });
     
     onOpenChange(false);
@@ -79,6 +171,45 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            
+            <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  id="youtubeVideo"
+                  checked={formData.isYoutubeVideo}
+                  onChange={(e) => handleYoutubeCheck(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="youtubeVideo" className="cursor-pointer font-medium text-red-500">
+                  YouTube Video
+                </Label>
+                {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2" />}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="url">URL *</Label>
+              <div className="flex gap-2">
+                  <Input
+                    id="url"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={formData.url}
+                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                    onBlur={() => {
+                        if (formData.isYoutubeVideo && formData.url) {
+                            fetchYoutubeData();
+                        }
+                    }}
+                    required
+                  />
+                  {formData.isYoutubeVideo && (
+                      <Button type="button" variant="secondary" size="sm" onClick={fetchYoutubeData} disabled={isLoading}>
+                        Fetch
+                      </Button>
+                  )}
+              </div>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="title">Title *</Label>
               <Input
@@ -86,18 +217,6 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
                 placeholder="e.g., Shadcn UI"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="url">URL *</Label>
-              <Input
-                id="url"
-                type="url"
-                placeholder="https://example.com"
-                value={formData.url}
-                onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                 required
               />
             </div>
@@ -113,19 +232,33 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
               />
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="favicon">Favicon URL (optional)</Label>
-              <Input
-                id="favicon"
-                type="url"
-                placeholder="Leave empty to auto-generate"
-                value={formData.favicon}
-                onChange={(e) => setFormData({ ...formData, favicon: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                If left empty, favicon will be auto-generated from the URL
-              </p>
-            </div>
+            {formData.isYoutubeVideo && (
+                <div className="grid gap-2">
+                  <Label htmlFor="duration">Duration</Label>
+                  <Input
+                    id="duration"
+                    placeholder="e.g. 10:05"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  />
+                </div>
+            )}
+
+            {!formData.isYoutubeVideo && (
+                <div className="grid gap-2">
+                  <Label htmlFor="favicon">Favicon URL (optional)</Label>
+                  <Input
+                    id="favicon"
+                    type="url"
+                    placeholder="Leave empty to auto-generate"
+                    value={formData.favicon}
+                    onChange={(e) => setFormData({ ...formData, favicon: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    If left empty, favicon will be auto-generated from the URL
+                  </p>
+                </div>
+            )}
 
             <div className="grid gap-2">
               <Label htmlFor="collection">Collection *</Label>
@@ -135,7 +268,11 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
                 value={formData.collectionId}
                 onChange={(e) => setFormData({ ...formData, collectionId: e.target.value })}
                 required
+                disabled={formData.isYoutubeVideo}
               >
+                {formData.isYoutubeVideo && !collections.some(c => c.id === "youtube") && (
+                    <option value="youtube">Youtube</option>
+                )}
                 {collections
                   .filter((c) => c.id !== "all")
                   .map((collection) => (
@@ -180,18 +317,20 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
                 </Label>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="darkIcon"
-                  checked={formData.hasDarkIcon}
-                  onChange={(e) => setFormData({ ...formData, hasDarkIcon: e.target.checked })}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="darkIcon" className="cursor-pointer">
-                  Has dark icon
-                </Label>
-              </div>
+              {!formData.isYoutubeVideo && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="darkIcon"
+                      checked={formData.hasDarkIcon}
+                      onChange={(e) => setFormData({ ...formData, hasDarkIcon: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="darkIcon" className="cursor-pointer">
+                      Has dark icon
+                    </Label>
+                  </div>
+              )}
             </div>
           </div>
 

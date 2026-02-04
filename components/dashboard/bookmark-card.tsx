@@ -18,6 +18,8 @@ import {
   Trash2,
   Tag,
   Archive,
+  Clock,
+  Youtube,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBookmarksStore } from "@/store/bookmarks-store";
@@ -35,6 +37,7 @@ export function BookmarkCard({
   const { toggleFavorite, archiveBookmark, trashBookmark } =
     useBookmarksStore();
   const bookmarkTags = allTags.filter((tag) => bookmark.tags.includes(tag.id));
+  const isYoutube = bookmark.collectionId === "youtube" || !!bookmark.thumbnail || !!bookmark.duration;
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(bookmark.url);
@@ -47,14 +50,18 @@ export function BookmarkCard({
   if (variant === "list") {
     return (
       <div className="group flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-        <div className="size-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
-          <Image
-            src={bookmark.favicon}
-            alt={bookmark.title}
-            width={24}
-            height={24}
-            className={cn("size-6", bookmark.hasDarkIcon && "dark:invert")}
-          />
+        <div className={cn("size-10 rounded-lg flex items-center justify-center overflow-hidden shrink-0", isYoutube ? "bg-red-500/10" : "bg-muted")}>
+          {isYoutube ? (
+            <Youtube className="size-5 text-red-600" />
+          ) : (
+            <Image
+              src={bookmark.favicon}
+              alt={bookmark.title}
+              width={24}
+              height={24}
+              className={cn("size-6", bookmark.hasDarkIcon && "dark:invert")}
+            />
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -81,8 +88,14 @@ export function BookmarkCard({
               </div>
             )}
           </div>
-          <p className="text-sm text-muted-foreground truncate">
-            {bookmark.url}
+          <p className="text-sm text-muted-foreground truncate flex items-center gap-2">
+            <span className="truncate">{bookmark.url}</span>
+            {isYoutube && bookmark.duration && (
+                <span className="flex items-center gap-1 text-xs shrink-0 bg-muted px-1.5 py-0.5 rounded-sm">
+                    <Clock className="size-3" />
+                    {bookmark.duration}
+                </span>
+            )}
           </p>
         </div>
 
@@ -203,17 +216,31 @@ export function BookmarkCard({
         className="w-full text-left cursor-pointer"
         onClick={handleOpenUrl}
       >
-        <div className="h-32 bg-linear-to-br from-muted/50 to-muted flex items-center justify-center">
-          <div className="size-12 rounded-xl bg-background shadow-sm flex items-center justify-center">
-            <Image
-              src={bookmark.favicon}
-              alt={bookmark.title}
-              width={32}
-              height={32}
-              className={cn("size-8", bookmark.hasDarkIcon && "dark:invert")}
-            />
-          </div>
-        </div>
+        {isYoutube && bookmark.thumbnail ? (
+            <div className="h-32 w-full relative bg-black group-hover:opacity-90 transition-opacity">
+                <Image
+                  src={bookmark.thumbnail}
+                  alt={bookmark.title}
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                    <Youtube className="size-10 text-white fill-red-600" />
+                </div>
+            </div>
+        ) : (
+            <div className="h-32 bg-linear-to-br from-muted/50 to-muted flex items-center justify-center">
+              <div className="size-12 rounded-xl bg-background shadow-sm flex items-center justify-center">
+                <Image
+                  src={bookmark.favicon}
+                  alt={bookmark.title}
+                  width={32}
+                  height={32}
+                  className={cn("size-8", bookmark.hasDarkIcon && "dark:invert")}
+                />
+              </div>
+            </div>
+        )}
 
         <div className="p-4 space-y-2">
           <div className="flex items-start justify-between gap-2">
@@ -222,6 +249,13 @@ export function BookmarkCard({
           <p className="text-sm text-muted-foreground line-clamp-2">
             {bookmark.description}
           </p>
+          {isYoutube && bookmark.duration && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium pt-1">
+                  <Clock className="size-3" />
+                  {bookmark.duration}
+              </span>
+          )}
+          
           {bookmarkTags.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
               {bookmarkTags.slice(0, 3).map((tag) => (
