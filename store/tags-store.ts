@@ -1,40 +1,87 @@
 import { create } from "zustand";
-import { tags as initialTags, type Tag } from "@/mock-data/bookmarks";
+import { Tag } from "@/types";
+import { createClient } from "@/lib/supabase/client";
 
 interface TagsState {
   tags: Tag[];
-  addTag: (tag: Omit<Tag, "id" | "count">) => void;
-  updateTag: (id: string, updates: Partial<Omit<Tag, "id">>) => void;
-  deleteTag: (id: string) => void;
+  loading: boolean;
+  error: string | null;
+  fetchTags: () => Promise<void>;
+  addTag: (tag: Omit<Tag, "id" | "count">) => Promise<void>;
+  updateTag: (id: string, updates: Partial<Omit<Tag, "id">>) => Promise<void>;
+  deleteTag: (id: string) => Promise<void>;
   getTagById: (id: string) => Tag | undefined;
 }
 
 export const useTagsStore = create<TagsState>((set, get) => ({
-  tags: initialTags,
+  tags: [],
+  loading: false,
+  error: null,
 
-  addTag: (tag) =>
-    set((state) => ({
-      tags: [
-        ...state.tags,
-        {
-          ...tag,
-          id: tag.name.toLowerCase().replace(/\s+/g, "-"),
-          count: 0,
-        },
-      ],
-    })),
+  fetchTags: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch("/api/tags");
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      const data = await response.json();
+      set({ tags: data.tags, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
 
-  updateTag: (id, updates) =>
-    set((state) => ({
-      tags: state.tags.map((tag) =>
-        tag.id === id ? { ...tag, ...updates } : tag
-      ),
-    })),
+  addTag: async (tag) => {
+    try {
+      const response = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tag),
+      });
+      if (!response.ok) throw new Error("Failed to add tag");
+      const data = await response.json();
+      set((state) => ({
+        tags: [...state.tags, data.tag],
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
-  deleteTag: (id) =>
-    set((state) => ({
-      tags: state.tags.filter((t) => t.id !== id),
-    })),
+  updateTag: async (id, updates) => {
+    try {
+      const response = await fetch(`/api/tags/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (!response.ok) throw new Error("Failed to update tag");
+      const data = await response.json();
+      set((state) => ({
+        tags: state.tags.map((tag) =>
+          tag.id === id ? { ...tag, ...data.tag } : tag
+        ),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  deleteTag: async (id) => {
+    try {
+      const response = await fetch(`/api/tags/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete tag");
+      set((state) => ({
+        tags: state.tags.filter((t) => t.id !== id),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
   getTagById: (id) => {
     return get().tags.find((t) => t.id === id);

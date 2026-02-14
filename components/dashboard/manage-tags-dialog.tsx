@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTagsStore } from "@/store/tags-store";
-import { Pencil, Trash2, Plus, X, Check } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, X, Check } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface ManageTagsDialogProps {
@@ -34,6 +35,8 @@ const availableColors = [
   { id: "foreground", label: "Foreground", class: "bg-foreground/10 text-foreground" },
 ];
 
+const defaultTagColor = "bg-blue-500/10 text-blue-500";
+
 export function ManageTagsDialog({
   open,
   onOpenChange,
@@ -41,38 +44,78 @@ export function ManageTagsDialog({
   const { tags, addTag, updateTag, deleteTag } = useTagsStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    color: "bg-blue-500/10 text-blue-500",
+    color: defaultTagColor, // Changed initial default color
   });
 
-  const handleAdd = () => {
-    if (!formData.name.trim()) return;
+  const handleAdd = async () => {
+    if (!formData.name.trim() || isLoading) return;
 
-    addTag({
-      name: formData.name,
-      color: formData.color,
-    });
+    setIsLoading(true);
+    try {
+      await addTag({
+        name: formData.name,
+        color: formData.color,
+      });
 
-    setFormData({ name: "", color: "bg-blue-500/10 text-blue-500" });
-    setIsAdding(false);
+      setFormData({
+        name: "",
+        color: defaultTagColor, // Changed default color
+      });
+      setIsAdding(false);
+      toast.success("Tag added successfully"); // Added toast
+    } catch (error) {
+      console.error("Error adding tag:", error);
+      toast.error("Failed to add tag"); // Added toast
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdate = (id: string) => {
-    if (!formData.name.trim()) return;
+  const handleUpdate = async () => { // Removed 'id' parameter, using editingId from state
+    if (!editingId || !formData.name.trim() || isLoading) return; // Added editingId check
 
-    updateTag(id, {
-      name: formData.name,
-      color: formData.color,
-    });
+    setIsLoading(true);
+    try {
+      await updateTag(editingId, { // Used editingId
+        name: formData.name,
+        color: formData.color,
+      });
 
-    setEditingId(null);
-    setFormData({ name: "", color: "bg-blue-500/10 text-blue-500" });
+      setEditingId(null);
+      setFormData({
+        name: "",
+        color: defaultTagColor, // Changed default color
+      });
+      toast.success("Tag updated successfully"); // Added toast
+    } catch (error) {
+      console.error("Error updating tag:", error);
+      toast.error("Failed to update tag"); // Added toast
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (isLoading) return; // Added isLoading check
     if (confirm("Are you sure you want to delete this tag?")) {
-      deleteTag(id);
+      setIsLoading(true);
+      try {
+        await deleteTag(id);
+        toast.success("Tag deleted successfully"); // Added toast
+      } catch (error) {
+        console.error("Error deleting tag:", error);
+        toast.error("Failed to delete tag"); // Added toast
+      } finally {
+        setIsLoading(false);
+        // If we deleted the actively edited item, clear edit state
+        if (editingId === id) {
+          setEditingId(null);
+          setFormData({ name: "", color: defaultTagColor }); // Changed default color
+        }
+      }
     }
   };
 
@@ -109,6 +152,7 @@ export function ManageTagsDialog({
                 onClick={() => setIsAdding(true)}
                 variant="outline"
                 className="w-full"
+                disabled={isLoading}
               >
                 <Plus className="size-4 mr-2" />
                 Add New Tag
@@ -121,6 +165,7 @@ export function ManageTagsDialog({
                     variant="ghost"
                     size="icon-xs"
                     onClick={cancelEditing}
+                    disabled={isLoading}
                   >
                     <X className="size-4" />
                   </Button>
@@ -139,6 +184,7 @@ export function ManageTagsDialog({
                         setFormData({ ...formData, name: e.target.value })
                       }
                       className="mt-1"
+                      disabled={isLoading}
                     />
                   </div>
 
@@ -149,6 +195,7 @@ export function ManageTagsDialog({
                         <button
                           key={colorOption.id}
                           type="button"
+                          disabled={isLoading}
                           onClick={() =>
                             setFormData({ ...formData, color: colorOption.class })
                           }
@@ -157,7 +204,8 @@ export function ManageTagsDialog({
                             colorOption.class,
                             formData.color === colorOption.class
                               ? "border-foreground scale-105"
-                              : "border-transparent"
+                              : "border-transparent",
+                            isLoading && "opacity-50 cursor-not-allowed"
                           )}
                           title={colorOption.label}
                         >
@@ -167,9 +215,9 @@ export function ManageTagsDialog({
                     </div>
                   </div>
 
-                  <Button onClick={handleAdd} className="w-full" size="sm">
+                  <Button onClick={handleAdd} className="w-full" size="sm" disabled={isLoading}>
                     <Check className="size-4 mr-2" />
-                    Add Tag
+                    {isLoading ? "Adding..." : "Add Tag"}
                   </Button>
                 </div>
               </div>
@@ -286,7 +334,7 @@ export function ManageTagsDialog({
                           </div>
 
                           <Button
-                            onClick={() => handleUpdate(tag.id)}
+                            onClick={() => handleUpdate()}
                             className="w-full"
                             size="sm"
                           >

@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { bookmarks as initialBookmarks, type Bookmark } from "@/mock-data/bookmarks";
+import { Bookmark } from "@/types";
+import { createClient } from "@/lib/supabase/client";
 
 type ViewMode = "grid" | "list";
 type SortBy = "date-newest" | "date-oldest" | "alpha-az" | "alpha-za";
@@ -15,6 +16,15 @@ interface BookmarksState {
   viewMode: ViewMode;
   sortBy: SortBy;
   filterType: FilterType;
+  loading: boolean;
+  error: string | null;
+  
+  // Fetch methods
+  fetchBookmarks: () => Promise<void>;
+  fetchArchivedBookmarks: () => Promise<void>;
+  fetchTrashedBookmarks: () => Promise<void>;
+  
+  // UI state methods
   setSelectedCollection: (collectionId: string) => void;
   toggleTag: (tagId: string) => void;
   clearTags: () => void;
@@ -22,13 +32,17 @@ interface BookmarksState {
   setViewMode: (mode: ViewMode) => void;
   setSortBy: (sort: SortBy) => void;
   setFilterType: (filter: FilterType) => void;
-  addBookmark: (bookmark: Omit<Bookmark, "id" | "createdAt">) => void;
-  toggleFavorite: (bookmarkId: string) => void;
-  archiveBookmark: (bookmarkId: string) => void;
-  restoreFromArchive: (bookmarkId: string) => void;
-  trashBookmark: (bookmarkId: string) => void;
-  restoreFromTrash: (bookmarkId: string) => void;
-  permanentlyDelete: (bookmarkId: string) => void;
+  
+  // CRUD methods
+  addBookmark: (bookmark: Omit<Bookmark, "id" | "createdAt">) => Promise<void>;
+  toggleFavorite: (bookmarkId: string) => Promise<void>;
+  archiveBookmark: (bookmarkId: string) => Promise<void>;
+  restoreFromArchive: (bookmarkId: string) => Promise<void>;
+  trashBookmark: (bookmarkId: string) => Promise<void>;
+  restoreFromTrash: (bookmarkId: string) => Promise<void>;
+  permanentlyDelete: (bookmarkId: string) => Promise<void>;
+  
+  // Getter methods
   getFilteredBookmarks: () => Bookmark[];
   getFavoriteBookmarks: () => Bookmark[];
   getArchivedBookmarks: () => Bookmark[];
@@ -36,7 +50,7 @@ interface BookmarksState {
 }
 
 export const useBookmarksStore = create<BookmarksState>((set, get) => ({
-  bookmarks: initialBookmarks,
+  bookmarks: [],
   archivedBookmarks: [],
   trashedBookmarks: [],
   selectedCollection: "all",
@@ -45,6 +59,44 @@ export const useBookmarksStore = create<BookmarksState>((set, get) => ({
   viewMode: "grid",
   sortBy: "date-newest",
   filterType: "all",
+  loading: false,
+  error: null,
+
+  fetchBookmarks: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch("/api/bookmarks");
+      if (!response.ok) throw new Error("Failed to fetch bookmarks");
+      const data = await response.json();
+      set({ bookmarks: data.bookmarks, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  fetchArchivedBookmarks: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch("/api/bookmarks?archived=true");
+      if (!response.ok) throw new Error("Failed to fetch archived bookmarks");
+      const data = await response.json();
+      set({ archivedBookmarks: data.bookmarks, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
+
+  fetchTrashedBookmarks: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await fetch("/api/bookmarks?trashed=true");
+      if (!response.ok) throw new Error("Failed to fetch trashed bookmarks");
+      const data = await response.json();
+      set({ trashedBookmarks: data.bookmarks, loading: false });
+    } catch (error: any) {
+      set({ error: error.message, loading: false });
+    }
+  },
 
   setSelectedCollection: (collectionId) => set({ selectedCollection: collectionId }),
 
@@ -65,71 +117,150 @@ export const useBookmarksStore = create<BookmarksState>((set, get) => ({
 
   setFilterType: (filter) => set({ filterType: filter }),
 
-  addBookmark: (bookmark) =>
-    set((state) => ({
-      bookmarks: [
-        {
-          ...bookmark,
-          id: Math.random().toString(36).substring(2, 11),
-          createdAt: new Date().toISOString().split("T")[0],
-        },
-        ...state.bookmarks,
-      ],
-    })),
+  addBookmark: async (bookmark) => {
+    try {
+      const response = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookmark),
+      });
+      if (!response.ok) throw new Error("Failed to add bookmark");
+      const data = await response.json();
+      set((state) => ({
+        bookmarks: [data.bookmark, ...state.bookmarks],
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
-  toggleFavorite: (bookmarkId) =>
-    set((state) => ({
-      bookmarks: state.bookmarks.map((bookmark) =>
-        bookmark.id === bookmarkId
-          ? { ...bookmark, isFavorite: !bookmark.isFavorite }
-          : bookmark
-      ),
-    })),
+  toggleFavorite: async (bookmarkId) => {
+    const bookmark = get().bookmarks.find((b) => b.id === bookmarkId);
+    if (!bookmark) return;
 
-  archiveBookmark: (bookmarkId) =>
-    set((state) => {
-      const bookmark = state.bookmarks.find((b) => b.id === bookmarkId);
-      if (!bookmark) return state;
-      return {
-        bookmarks: state.bookmarks.filter((b) => b.id !== bookmarkId),
-        archivedBookmarks: [...state.archivedBookmarks, bookmark],
-      };
-    }),
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFavorite: !bookmark.isFavorite }),
+      });
+      if (!response.ok) throw new Error("Failed to toggle favorite");
+      
+      set((state) => ({
+        bookmarks: state.bookmarks.map((b) =>
+          b.id === bookmarkId ? { ...b, isFavorite: !b.isFavorite } : b
+        ),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
-  restoreFromArchive: (bookmarkId) =>
-    set((state) => {
-      const bookmark = state.archivedBookmarks.find((b) => b.id === bookmarkId);
-      if (!bookmark) return state;
-      return {
-        archivedBookmarks: state.archivedBookmarks.filter((b) => b.id !== bookmarkId),
-        bookmarks: [...state.bookmarks, bookmark],
-      };
-    }),
+  archiveBookmark: async (bookmarkId) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archivedAt: new Date().toISOString() }),
+      });
+      if (!response.ok) throw new Error("Failed to archive bookmark");
+      
+      const bookmark = get().bookmarks.find((b) => b.id === bookmarkId);
+      if (bookmark) {
+        set((state) => ({
+          bookmarks: state.bookmarks.filter((b) => b.id !== bookmarkId),
+          archivedBookmarks: [...state.archivedBookmarks, { ...bookmark, archivedAt: new Date().toISOString() }],
+        }));
+      }
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
-  trashBookmark: (bookmarkId) =>
-    set((state) => {
-      const bookmark = state.bookmarks.find((b) => b.id === bookmarkId);
-      if (!bookmark) return state;
-      return {
-        bookmarks: state.bookmarks.filter((b) => b.id !== bookmarkId),
-        trashedBookmarks: [...state.trashedBookmarks, bookmark],
-      };
-    }),
+  restoreFromArchive: async (bookmarkId) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archivedAt: null }),
+      });
+      if (!response.ok) throw new Error("Failed to restore bookmark");
+      
+      const bookmark = get().archivedBookmarks.find((b) => b.id === bookmarkId);
+      if (bookmark) {
+        set((state) => ({
+          archivedBookmarks: state.archivedBookmarks.filter((b) => b.id !== bookmarkId),
+          bookmarks: [...state.bookmarks, { ...bookmark, archivedAt: undefined }],
+        }));
+      }
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
-  restoreFromTrash: (bookmarkId) =>
-    set((state) => {
-      const bookmark = state.trashedBookmarks.find((b) => b.id === bookmarkId);
-      if (!bookmark) return state;
-      return {
+  trashBookmark: async (bookmarkId) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trashedAt: new Date().toISOString() }),
+      });
+      if (!response.ok) throw new Error("Failed to trash bookmark");
+      
+      const bookmark = get().bookmarks.find((b) => b.id === bookmarkId);
+      if (bookmark) {
+        set((state) => ({
+          bookmarks: state.bookmarks.filter((b) => b.id !== bookmarkId),
+          trashedBookmarks: [...state.trashedBookmarks, { ...bookmark, trashedAt: new Date().toISOString() }],
+        }));
+      }
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  restoreFromTrash: async (bookmarkId) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trashedAt: null }),
+      });
+      if (!response.ok) throw new Error("Failed to restore bookmark");
+      
+      const bookmark = get().trashedBookmarks.find((b) => b.id === bookmarkId);
+      if (bookmark) {
+        set((state) => ({
+          trashedBookmarks: state.trashedBookmarks.filter((b) => b.id !== bookmarkId),
+          bookmarks: [...state.bookmarks, { ...bookmark, trashedAt: undefined }],
+        }));
+      }
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  permanentlyDelete: async (bookmarkId) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${bookmarkId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete bookmark");
+      
+      set((state) => ({
         trashedBookmarks: state.trashedBookmarks.filter((b) => b.id !== bookmarkId),
-        bookmarks: [...state.bookmarks, bookmark],
-      };
-    }),
-
-  permanentlyDelete: (bookmarkId) =>
-    set((state) => ({
-      trashedBookmarks: state.trashedBookmarks.filter((b) => b.id !== bookmarkId),
-    })),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
 
   getFilteredBookmarks: () => {
     const state = get();

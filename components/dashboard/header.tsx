@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +25,11 @@ import {
   ArrowUpDown,
   Github,
   Check,
+  LogOut,
+  User,
 } from "lucide-react";
 import { useBookmarksStore } from "@/store/bookmarks-store";
+import { useAuth } from "@/components/auth/auth-provider";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { AddBookmarkDialog } from "@/components/dashboard/add-bookmark-dialog";
@@ -47,6 +51,47 @@ const filterOptions = [
   { value: "with-tags", label: "With Tags" },
   { value: "without-tags", label: "Without Tags" },
 ] as const;
+
+function UserProfileDropdown() {
+  const { user, signOut } = useAuth();
+
+  if (!user) return null;
+
+  const getInitials = (email: string) => {
+    return email.substring(0, 2).toUpperCase();
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Avatar className="size-8">
+            <AvatarFallback className="text-xs">
+              {getInitials(user.email || "U")}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">
+              {user.user_metadata?.full_name || "User"}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={signOut}>
+          <LogOut className="mr-2 size-4" />
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function BookmarksHeader({ title = "Bookmarks" }: BookmarksHeaderProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -177,6 +222,8 @@ export function BookmarksHeader({ title = "Bookmarks" }: BookmarksHeaderProps) {
           </Button>
 
           <Separator orientation="vertical" className="h-5 hidden sm:block" />
+
+          <UserProfileDropdown />
 
           <ThemeToggle />
         </div>

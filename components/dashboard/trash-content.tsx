@@ -1,6 +1,9 @@
 "use client";
 
 import { useBookmarksStore } from "@/store/bookmarks-store";
+import { useTagsStore } from "@/store/tags-store";
+import { BookmarkCard } from "./bookmark-card";
+import { BookmarkCardSkeleton } from "./skeletons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Trash2, MoreHorizontal, RotateCcw, XCircle, ExternalLink } from "lucide-react";
 import Image from "next/image";
-import { type Bookmark } from "@/mock-data/bookmarks";
+import { type Bookmark } from "@/types";
 import { cn } from "@/lib/utils";
 
 function TrashedBookmarkCard({ bookmark }: { bookmark: Bookmark }) {
@@ -72,8 +75,25 @@ function TrashedBookmarkCard({ bookmark }: { bookmark: Bookmark }) {
 }
 
 export function TrashContent() {
-  const { getTrashedBookmarks, trashedBookmarks } = useBookmarksStore();
-  const filteredTrash = getTrashedBookmarks();
+  const { getTrashedBookmarks, searchQuery, setSearchQuery, viewMode, setViewMode, loading } = useBookmarksStore();
+  const trashedBookmarks = getTrashedBookmarks();
+
+  if (loading && trashedBookmarks.length === 0) {
+    return (
+      <div className="flex-1 w-full overflow-auto">
+        <div className="p-4 md:p-6 space-y-6">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
+          <div className={`grid gap-4 ${viewMode === "grid"
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            : "flex flex-col"}`}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <BookmarkCardSkeleton key={i} variant={viewMode} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 w-full overflow-auto">
@@ -99,7 +119,7 @@ export function TrashContent() {
         </div>
 
         <div className="flex flex-col gap-2">
-          {filteredTrash.map((bookmark) => (
+          {trashedBookmarks.map((bookmark) => (
             <TrashedBookmarkCard key={bookmark.id} bookmark={bookmark} />
           ))}
         </div>

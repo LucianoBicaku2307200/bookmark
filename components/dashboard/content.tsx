@@ -4,6 +4,7 @@ import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
 import { useTagsStore } from "@/store/tags-store";
 import { BookmarkCard } from "./bookmark-card";
+import { BookmarkCardSkeleton } from "./skeletons";
 import { StatsCards } from "./stats-cards";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -18,6 +19,7 @@ export function BookmarksContent() {
     filterType,
     setFilterType,
     sortBy,
+    loading,
   } = useBookmarksStore();
   const { collections } = useCollectionsStore();
   const { tags } = useTagsStore();
@@ -30,6 +32,31 @@ export function BookmarksContent() {
   const activeTagsData = tags.filter((t) => selectedTags.includes(t.id));
   const hasActiveFilters =
     selectedTags.length > 0 || filterType !== "all" || sortBy !== "date-newest";
+
+  if (loading && filteredBookmarks.length === 0) {
+    return (
+      <div className="flex-1 w-full overflow-auto">
+        <div className="p-4 md:p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="h-24 bg-muted animate-pulse rounded-xl" />
+            <div className="h-24 bg-muted animate-pulse rounded-xl" />
+            <div className="h-24 bg-muted animate-pulse rounded-xl" />
+            <div className="h-24 bg-muted animate-pulse rounded-xl" />
+          </div>
+          <div className="space-y-4">
+            <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
+            <div className={`grid gap-4 ${viewMode === "grid"
+              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : "flex flex-col"}`}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <BookmarkCardSkeleton key={i} variant={viewMode} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 w-full overflow-auto">

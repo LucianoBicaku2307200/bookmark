@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,41 +61,75 @@ export function ManageCollectionsDialog({
     useCollectionsStore();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     icon: "folder",
     color: "blue",
   });
 
-  const handleAdd = () => {
-    if (!formData.name.trim()) return;
+  const handleAdd = async () => {
+    if (!formData.name.trim() || isLoading) return;
 
-    addCollection({
-      name: formData.name,
-      icon: formData.icon,
-      color: formData.color,
-    });
+    setIsLoading(true);
+    try {
+      await addCollection({
+        name: formData.name,
+        icon: formData.icon,
+        color: formData.color,
+      });
 
-    setFormData({ name: "", icon: "folder", color: "blue" });
-    setIsAdding(false);
+      setFormData({ name: "", icon: "folder", color: "slate" });
+      setIsAdding(false);
+      toast.success("Collection added successfully");
+    } catch (error) {
+      console.error("Error adding collection:", error);
+      toast.error("Failed to add collection");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleUpdate = (id: string) => {
-    if (!formData.name.trim()) return;
+  const handleUpdate = async () => {
+    if (!editingId || !formData.name.trim() || isLoading) return;
 
-    updateCollection(id, {
-      name: formData.name,
-      icon: formData.icon,
-      color: formData.color,
-    });
+    setIsLoading(true);
+    try {
+      await updateCollection(editingId, {
+        name: formData.name,
+        icon: formData.icon,
+        color: formData.color,
+      });
 
-    setEditingId(null);
-    setFormData({ name: "", icon: "folder", color: "blue" });
+      setEditingId(null);
+      setFormData({ name: "", icon: "folder", color: "slate" });
+      toast.success("Collection updated successfully");
+    } catch (error) {
+      console.error("Error updating collection:", error);
+      toast.error("Failed to update collection");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    if (isLoading) return;
     if (confirm("Are you sure you want to delete this collection?")) {
-      deleteCollection(id);
+      setIsLoading(true);
+      try {
+        await deleteCollection(id);
+        toast.success("Collection deleted successfully");
+      } catch (error) {
+        console.error("Error deleting collection:", error);
+        toast.error("Failed to delete collection");
+      } finally {
+        setIsLoading(false);
+        // If we deleted the actively edited item (rare but possible), clear edit state
+        if (editingId === id) {
+          setEditingId(null);
+          setFormData({ name: "", icon: "folder", color: "blue" });
+        }
+      }
     }
   };
 
@@ -134,6 +169,7 @@ export function ManageCollectionsDialog({
                 onClick={() => setIsAdding(true)}
                 variant="outline"
                 className="w-full"
+                disabled={isLoading}
               >
                 <Plus className="size-4 mr-2" />
                 Add New Collection
@@ -148,6 +184,7 @@ export function ManageCollectionsDialog({
                     variant="ghost"
                     size="icon-xs"
                     onClick={cancelEditing}
+                    disabled={isLoading}
                   >
                     <X className="size-4" />
                   </Button>
@@ -166,6 +203,7 @@ export function ManageCollectionsDialog({
                         setFormData({ ...formData, name: e.target.value })
                       }
                       className="mt-1"
+                      disabled={isLoading}
                     />
                   </div>
 
@@ -178,6 +216,7 @@ export function ManageCollectionsDialog({
                           <button
                             key={iconOption.id}
                             type="button"
+                            disabled={isLoading}
                             onClick={() =>
                               setFormData({ ...formData, icon: iconOption.id })
                             }
@@ -185,7 +224,8 @@ export function ManageCollectionsDialog({
                               "p-2 rounded-md border transition-colors",
                               formData.icon === iconOption.id
                                 ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-background hover:bg-muted"
+                                : "bg-background hover:bg-muted",
+                              isLoading && "opacity-50 cursor-not-allowed"
                             )}
                           >
                             <IconComponent className="size-4" />
@@ -202,6 +242,7 @@ export function ManageCollectionsDialog({
                         <button
                           key={colorOption.id}
                           type="button"
+                          disabled={isLoading}
                           onClick={() =>
                             setFormData({ ...formData, color: colorOption.id })
                           }
@@ -210,7 +251,8 @@ export function ManageCollectionsDialog({
                             colorOption.class,
                             formData.color === colorOption.id
                               ? "border-foreground scale-110"
-                              : "border-transparent"
+                              : "border-transparent",
+                            isLoading && "opacity-50 cursor-not-allowed"
                           )}
                           title={colorOption.label}
                         />
@@ -218,9 +260,9 @@ export function ManageCollectionsDialog({
                     </div>
                   </div>
 
-                  <Button onClick={handleAdd} className="w-full" size="sm">
+                  <Button onClick={handleAdd} className="w-full" size="sm" disabled={isLoading}>
                     <Check className="size-4 mr-2" />
-                    Add Collection
+                    {isLoading ? "Adding..." : "Add Collection"}
                   </Button>
                 </div>
               </div>
@@ -377,7 +419,7 @@ export function ManageCollectionsDialog({
                           </div>
 
                           <Button
-                            onClick={() => handleUpdate(collection.id)}
+                            onClick={() => handleUpdate()}
                             className="w-full"
                             size="sm"
                           >

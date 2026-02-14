@@ -1,6 +1,9 @@
 "use client";
 
 import { useBookmarksStore } from "@/store/bookmarks-store";
+import { useTagsStore } from "@/store/tags-store";
+import { BookmarkCard } from "./bookmark-card";
+import { BookmarkCardSkeleton } from "./skeletons";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,13 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Archive, MoreHorizontal, RotateCcw, Trash2, ExternalLink } from "lucide-react";
+import { Archive, MoreHorizontal, RotateCcw, Trash2, ExternalLink, Search } from "lucide-react";
 import Image from "next/image";
-import { tags as allTags, type Bookmark } from "@/mock-data/bookmarks";
+import { type Bookmark } from "@/types";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 function ArchivedBookmarkCard({ bookmark }: { bookmark: Bookmark }) {
   const { restoreFromArchive, trashBookmark } = useBookmarksStore();
+  const { tags: allTags } = useTagsStore();
   const bookmarkTags = allTags.filter((tag) => bookmark.tags.includes(tag.id));
 
   return (
@@ -93,8 +98,25 @@ function ArchivedBookmarkCard({ bookmark }: { bookmark: Bookmark }) {
 }
 
 export function ArchiveContent() {
-  const { getArchivedBookmarks } = useBookmarksStore();
+  const { getArchivedBookmarks, searchQuery, setSearchQuery, viewMode, setViewMode, loading } = useBookmarksStore();
   const archivedBookmarks = getArchivedBookmarks();
+
+  if (loading && archivedBookmarks.length === 0) {
+    return (
+      <div className="flex-1 w-full overflow-auto">
+        <div className="p-4 md:p-6 space-y-6">
+          <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
+          <div className={`grid gap-4 ${viewMode === "grid"
+            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            : "flex flex-col"}`}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <BookmarkCardSkeleton key={i} variant={viewMode} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 w-full overflow-auto">
