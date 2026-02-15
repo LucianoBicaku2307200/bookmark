@@ -26,5 +26,6 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   },
 });
 
-export default withPWA(nextConfig);
+// Export configuration based on environment to avoid Turbopack/Webpack conflicts in Dev
+export default process.env.NODE_ENV === "development" ? nextConfig : withPWA(nextConfig);
 

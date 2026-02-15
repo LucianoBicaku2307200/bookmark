@@ -35,6 +35,7 @@ interface BookmarksState {
   
   // CRUD methods
   addBookmark: (bookmark: Omit<Bookmark, "id" | "createdAt">) => Promise<void>;
+  updateBookmark: (id: string, updates: Partial<Bookmark>) => Promise<void>;
   toggleFavorite: (bookmarkId: string) => Promise<void>;
   archiveBookmark: (bookmarkId: string) => Promise<void>;
   restoreFromArchive: (bookmarkId: string) => Promise<void>;
@@ -128,6 +129,27 @@ export const useBookmarksStore = create<BookmarksState>((set, get) => ({
       const data = await response.json();
       set((state) => ({
         bookmarks: [data.bookmark, ...state.bookmarks],
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
+  updateBookmark: async (id, updates) => {
+    try {
+      const response = await fetch(`/api/bookmarks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (!response.ok) throw new Error("Failed to update bookmark");
+      const data = await response.json();
+      
+      set((state) => ({
+        bookmarks: state.bookmarks.map((b) => 
+          b.id === id ? { ...b, ...data.bookmark } : b
+        ),
       }));
     } catch (error: any) {
       set({ error: error.message });

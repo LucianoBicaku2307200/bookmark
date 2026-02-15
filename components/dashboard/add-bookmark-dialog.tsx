@@ -23,12 +23,14 @@ interface AddBookmarkDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps) {
+export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkDialogProps & { bookmark?: import("@/types").Bookmark }) {
   const addBookmark = useBookmarksStore((state) => state.addBookmark);
+  const updateBookmark = useBookmarksStore((state) => state.updateBookmark);
   const { collections, addCollection } = useCollectionsStore();
   const { tags: allTags } = useTagsStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
+
+  const initialFormState = {
     title: "",
     url: "",
     description: "",
@@ -40,7 +42,32 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
     isYoutubeVideo: false,
     duration: "",
     thumbnail: "",
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormState);
+
+  // Populate form when bookmark prop changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (bookmark) {
+        setFormData({
+          title: bookmark.title,
+          url: bookmark.url,
+          description: bookmark.description || "",
+          favicon: bookmark.favicon || "",
+          collectionId: bookmark.collectionId,
+          tags: bookmark.tags || [],
+          isFavorite: bookmark.isFavorite,
+          hasDarkIcon: bookmark.hasDarkIcon || false,
+          isYoutubeVideo: !!(bookmark.collectionId === "youtube" || bookmark.thumbnail || bookmark.duration),
+          duration: bookmark.duration || "",
+          thumbnail: bookmark.thumbnail || "",
+        });
+      } else {
+        setFormData(initialFormState);
+      }
+    }
+  }, [open, bookmark]);
 
   const ensureYoutubeCollection = async () => {
     const existing = collections.find(c => c.name.toLowerCase() === "youtube");
@@ -139,7 +166,7 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
         }
       }
 
-      await addBookmark({
+      const bookmarkData = {
         title: formData.title,
         url: formData.url,
         description: formData.description,
@@ -150,28 +177,25 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
         hasDarkIcon: formData.hasDarkIcon,
         duration: formData.isYoutubeVideo ? formData.duration : undefined,
         thumbnail: formData.isYoutubeVideo ? formData.thumbnail : undefined,
-      });
+      };
 
-      // Reset form
-      setFormData({
-        title: "",
-        url: "",
-        description: "",
-        favicon: "",
-        collectionId: "dev",
-        tags: [],
-        isFavorite: false,
-        hasDarkIcon: false,
-        isYoutubeVideo: false,
-        duration: "",
-        thumbnail: "",
-      });
+      if (bookmark) {
+        await updateBookmark(bookmark.id, bookmarkData);
+        toast.success("Bookmark updated successfully");
+      } else {
+        await addBookmark(bookmarkData);
+        toast.success("Bookmark added successfully");
+      }
+
+      // Reset form if creating
+      if (!bookmark) {
+        setFormData(initialFormState);
+      }
 
       onOpenChange(false);
-      toast.success("Bookmark added successfully");
     } catch (error) {
-      console.error("Error adding bookmark:", error);
-      toast.error("Failed to add bookmark");
+      console.error("Error saving bookmark:", error);
+      toast.error(bookmark ? "Failed to update bookmark" : "Failed to add bookmark");
     } finally {
       setIsLoading(false);
     }
@@ -190,9 +214,9 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Bookmark</DialogTitle>
+          <DialogTitle>{bookmark ? "Edit Bookmark" : "Add New Bookmark"}</DialogTitle>
           <DialogDescription>
-            Add a new bookmark to your collection. Fill in the details below.
+            {bookmark ? "Update the details of your bookmark below." : "Add a new bookmark to your collection. Fill in the details below."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -364,10 +388,10 @@ export function AddBookmarkDialog({ open, onOpenChange }: AddBookmarkDialogProps
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  {bookmark ? "Saving..." : "Adding..."}
                 </>
               ) : (
-                "Add Bookmark"
+                bookmark ? "Save Changes" : "Add Bookmark"
               )}
             </Button>
           </DialogFooter>
