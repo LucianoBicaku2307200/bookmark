@@ -48,6 +48,7 @@ interface BookmarksState {
   getFavoriteBookmarks: () => Bookmark[];
   getArchivedBookmarks: () => Bookmark[];
   getTrashedBookmarks: () => Bookmark[];
+  getScheduledBookmarks: () => Bookmark[];
 }
 
 export const useBookmarksStore = create<BookmarksState>((set, get) => ({
@@ -366,6 +367,25 @@ export const useBookmarksStore = create<BookmarksState>((set, get) => ({
         filtered.sort((a, b) => b.title.localeCompare(a.title));
         break;
     }
+
+    return filtered;
+  },
+
+  getScheduledBookmarks: () => {
+    const state = get();
+    let filtered = state.bookmarks.filter((b) => b.startAt);
+
+    if (state.searchQuery) {
+      const query = state.searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (b) =>
+          b.title.toLowerCase().includes(query) ||
+          b.description.toLowerCase().includes(query) ||
+          b.url.toLowerCase().includes(query)
+      );
+    }
+
+    filtered.sort((a, b) => new Date(a.startAt!).getTime() - new Date(b.startAt!).getTime());
 
     return filtered;
   },

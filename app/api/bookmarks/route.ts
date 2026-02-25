@@ -81,6 +81,8 @@ export async function GET(request: Request) {
       hasDarkIcon: bookmark.has_dark_icon,
       archivedAt: bookmark.archived_at,
       trashedAt: bookmark.trashed_at,
+      startAt: bookmark.start_at,
+      endAt: bookmark.end_at,
     }));
 
     // Filter by tags if specified (client-side filtering for now)
@@ -124,6 +126,8 @@ export async function POST(request: Request) {
       tags,
       isFavorite,
       hasDarkIcon,
+      startAt,
+      endAt,
     } = body;
 
     if (!title || !url) {
@@ -147,6 +151,8 @@ export async function POST(request: Request) {
         collection_id: collectionId || null,
         is_favorite: isFavorite || false,
         has_dark_icon: hasDarkIcon || false,
+        start_at: startAt || null,
+        end_at: endAt || null,
       })
       .select()
       .single();
@@ -189,6 +195,8 @@ export async function POST(request: Request) {
           createdAt: bookmark.created_at,
           isFavorite: bookmark.is_favorite,
           hasDarkIcon: bookmark.has_dark_icon,
+          startAt: bookmark.start_at,
+          endAt: bookmark.end_at,
         },
         message: "Bookmark created successfully",
       },

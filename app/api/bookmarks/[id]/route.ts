@@ -34,6 +34,8 @@ export async function PATCH(
       updates.has_dark_icon = body.hasDarkIcon;
     if (body.archivedAt !== undefined) updates.archived_at = body.archivedAt;
     if (body.trashedAt !== undefined) updates.trashed_at = body.trashedAt;
+    if (body.startAt !== undefined) updates.start_at = body.startAt;
+    if (body.endAt !== undefined) updates.end_at = body.endAt;
 
     // Update bookmark
     const { data: bookmark, error: updateError } = await supabase
@@ -91,6 +93,8 @@ export async function PATCH(
           hasDarkIcon: bookmark.has_dark_icon,
           archivedAt: bookmark.archived_at,
           trashedAt: bookmark.trashed_at,
+          startAt: bookmark.start_at,
+          endAt: bookmark.end_at,
         },
         message: "Bookmark updated successfully",
       },

@@ -28,7 +28,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Bookmarks - Square UI",
   description: "A beautiful bookmark manager template by Square UI",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -36,6 +35,9 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+  },
+  icons: {
+    apple: "/icon-192x192.png",
   },
 };
 

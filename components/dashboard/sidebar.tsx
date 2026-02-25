@@ -48,6 +48,7 @@ import {
   Archive,
   Trash2,
   Settings2,
+  Calendar,
 } from "lucide-react";
 import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
@@ -66,6 +67,7 @@ const collectionIcons: Record<string, React.ElementType> = {
 };
 
 const navItems = [
+  { icon: Calendar, label: "Schedule", href: "/schedule" },
   { icon: Star, label: "Favorites", href: "/favorites" },
   { icon: Archive, label: "Archive", href: "/archive" },
   { icon: Trash2, label: "Trash", href: "/trash" },

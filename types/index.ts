@@ -11,6 +11,8 @@ export type Bookmark = {
   hasDarkIcon?: boolean;
   duration?: string;
   thumbnail?: string;
+  startAt?: string;
+  endAt?: string;
 };
 
 export type Collection = {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +43,9 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
     isYoutubeVideo: false,
     duration: "",
     thumbnail: "",
+    isScheduled: false,
+    startAt: "",
+    endAt: "",
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -50,6 +54,8 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
   useEffect(() => {
     if (open) {
       if (bookmark) {
+        // Check if it's actually a YouTube video, don't just rely on duration (since any scheduled item might have one)
+        const isYoutubeFlag = bookmark.collectionId === "youtube" || !!(bookmark.url && /(?:youtube\.com|youtu\.be)/.test(bookmark.url));
         setFormData({
           title: bookmark.title,
           url: bookmark.url,
@@ -59,9 +65,12 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
           tags: bookmark.tags || [],
           isFavorite: bookmark.isFavorite,
           hasDarkIcon: bookmark.hasDarkIcon || false,
-          isYoutubeVideo: !!(bookmark.collectionId === "youtube" || bookmark.thumbnail || bookmark.duration),
+          isYoutubeVideo: isYoutubeFlag,
           duration: bookmark.duration || "",
           thumbnail: bookmark.thumbnail || "",
+          isScheduled: !!bookmark.startAt,
+          startAt: bookmark.startAt ? format(new Date(bookmark.startAt), "yyyy-MM-dd'T'HH:mm") : "",
+          endAt: bookmark.endAt ? format(new Date(bookmark.endAt), "yyyy-MM-dd'T'HH:mm") : "",
         });
       } else {
         setFormData(initialFormState);
@@ -175,8 +184,10 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
         tags: formData.tags,
         isFavorite: formData.isFavorite,
         hasDarkIcon: formData.hasDarkIcon,
-        duration: formData.isYoutubeVideo ? formData.duration : undefined,
+        duration: (formData.isYoutubeVideo || formData.isScheduled) ? formData.duration : undefined,
         thumbnail: formData.isYoutubeVideo ? formData.thumbnail : undefined,
+        startAt: formData.isScheduled && formData.startAt ? new Date(formData.startAt.replace(/-/g, "/").replace("T", " ")).toISOString() : undefined,
+        endAt: formData.isScheduled && formData.endAt ? new Date(formData.endAt.replace(/-/g, "/").replace("T", " ")).toISOString() : undefined,
       };
 
       if (bookmark) {
@@ -199,6 +210,29 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const calculateEndAt = (startAt: string, duration: string) => {
+    if (!startAt || !duration) return formData.endAt;
+    try {
+      // Use a more robust date parsing for naive datetime-local strings
+      const start = new Date(startAt.replace(/-/g, "/").replace("T", " "));
+      if (isNaN(start.getTime())) return formData.endAt;
+
+      const parts = duration.split(":").reverse();
+      let seconds = 0;
+      if (parts[0]) seconds += parseInt(parts[0]) || 0;
+      if (parts[1]) seconds += (parseInt(parts[1]) || 0) * 60;
+      if (parts[2]) seconds += (parseInt(parts[2]) || 0) * 3600;
+
+      if (seconds > 0) {
+        const end = new Date(start.getTime() + seconds * 1000);
+        return format(end, "yyyy-MM-dd'T'HH:mm");
+      }
+    } catch (e) {
+      console.error("Error calculating end time", e);
+    }
+    return formData.endAt;
   };
 
   const toggleTag = (tagId: string) => {
@@ -234,6 +268,19 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
                 YouTube Video
               </Label>
               {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2" />}
+            </div>
+
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="schedule"
+                checked={formData.isScheduled}
+                onChange={(e) => setFormData({ ...formData, isScheduled: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="schedule" className="cursor-pointer font-medium text-blue-500">
+                Schedule Time
+              </Label>
             </div>
 
             <div className="grid gap-2">
@@ -282,15 +329,47 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
               />
             </div>
 
-            {formData.isYoutubeVideo && (
+            {(formData.isYoutubeVideo || formData.isScheduled) && (
               <div className="grid gap-2">
                 <Label htmlFor="duration">Duration</Label>
                 <Input
                   id="duration"
                   placeholder="e.g. 10:05"
                   value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  onChange={(e) => {
+                    const newDuration = e.target.value;
+                    const endAt = formData.isScheduled ? calculateEndAt(formData.startAt, newDuration) : formData.endAt;
+                    setFormData({ ...formData, duration: newDuration, endAt });
+                  }}
                 />
+              </div>
+            )}
+
+            {formData.isScheduled && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="startAt">Start Time *</Label>
+                  <Input
+                    id="startAt"
+                    type="datetime-local"
+                    value={formData.startAt}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      const endAt = calculateEndAt(newStart, formData.duration);
+                      setFormData({ ...formData, startAt: newStart, endAt });
+                    }}
+                    required={formData.isScheduled}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="endAt">End Time</Label>
+                  <Input
+                    id="endAt"
+                    type="datetime-local"
+                    value={formData.endAt}
+                    onChange={(e) => setFormData({ ...formData, endAt: e.target.value })}
+                  />
+                </div>
               </div>
             )}
 
