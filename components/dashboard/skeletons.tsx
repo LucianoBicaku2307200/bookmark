@@ -41,9 +41,9 @@ export function BookmarkCardSkeleton({ variant = "grid" }: { variant?: "grid" | 
 
 export function SidebarItemSkeleton() {
     return (
-        <div className="flex items-center gap-2 px-2 py-1.5">
+        <li className="flex items-center gap-2 px-2 py-1.5 list-none">
             <Skeleton className="h-4 w-4 rounded-sm" />
             <Skeleton className="h-4 w-24 rounded-sm" />
-        </div>
+        </li>
     );
 }

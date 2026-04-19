@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useBookmarksStore } from "@/store/bookmarks-store";
 import { BookmarkCard } from "./bookmark-card";
+import { AddBookmarkDialog } from "./add-bookmark-dialog";
+import { type Bookmark } from "@/types";
 import {
     Calendar as CalendarIcon,
     ChevronLeft,
@@ -15,16 +17,44 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, addDays, isSameDay, parseISO, differenceInMinutes, startOfDay } from "date-fns";
+import { toast } from "sonner";
 
 export function ScheduleContent() {
-    const { getScheduledBookmarks } = useBookmarksStore();
+    const { getScheduledBookmarks, bookmarks, updateBookmark } = useBookmarksStore();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewType, setViewType] = useState<"calendar" | "grid">("calendar");
     const [mounted, setMounted] = useState(false);
     const [isMobileView, setIsMobileView] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [hoveredSlot, setHoveredSlot] = useState<{ dayIdx: number; hour: number } | null>(null);
+    const [pickerSlot, setPickerSlot] = useState<{ day: Date; hour: number } | null>(null);
+    const [pickerSearch, setPickerSearch] = useState("");
+    const [editingBookmark, setEditingBookmark] = useState<Bookmark | null>(null);
 
     const scheduledBookmarks = getScheduledBookmarks();
+
+    const unscheduledBookmarks = useMemo(
+        () => bookmarks.filter(b => !b.startAt),
+        [bookmarks]
+    );
+
+    const filteredUnscheduled = useMemo(
+        () => unscheduledBookmarks.filter(b =>
+            b.title.toLowerCase().includes(pickerSearch.toLowerCase()) ||
+            b.url.toLowerCase().includes(pickerSearch.toLowerCase())
+        ),
+        [unscheduledBookmarks, pickerSearch]
+    );
+
+    const handleScheduleBookmark = async (bookmarkId: string) => {
+        if (!pickerSlot) return;
+        const date = new Date(pickerSlot.day);
+        date.setHours(pickerSlot.hour, 0, 0, 0);
+        await updateBookmark(bookmarkId, { startAt: date.toISOString() });
+        setPickerSlot(null);
+        setPickerSearch("");
+        toast.success("Bookmark scheduled");
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -197,14 +227,29 @@ export function ScheduleContent() {
                                         )}
                                     >
                                         {hours.map(hour => (
-                                            <div key={hour} className="h-20 border-b last:border-b-0" />
+                                            <div
+                                                key={hour}
+                                                className={cn(
+                                                    "h-20 border-b last:border-b-0 relative group/hour cursor-pointer",
+                                                    hoveredSlot?.dayIdx === i && hoveredSlot?.hour === hour
+                                                        ? "border-primary/50 bg-primary/5"
+                                                        : ""
+                                                )}
+                                                onMouseEnter={() => setHoveredSlot({ dayIdx: i, hour })}
+                                                onMouseLeave={() => setHoveredSlot(null)}
+                                                onClick={() => { setPickerSlot({ day, hour }); setPickerSearch(""); }}
+                                            >
+                                                <div className="absolute inset-0 flex items-center justify-center transition-opacity pointer-events-none">
+                                                    <Plus className="size-4 text-primary/60" />
+                                                </div>
+                                            </div>
                                         ))}
 
-                                        <div className="absolute inset-0">
+                                        <div className="absolute inset-0 pointer-events-none">
                                             {getDayBookmarks(day).map((bookmark) => (
                                                 <div
                                                     key={bookmark.id}
-                                                    className="absolute inset-x-1 z-10 p-1 group"
+                                                    className="absolute inset-x-1 z-10 p-1 group pointer-events-auto"
                                                     style={getEventStyle(bookmark)}
                                                 >
                                                     <div className={cn(
@@ -212,7 +257,7 @@ export function ScheduleContent() {
                                                         "bg-card hover:bg-accent/50 hover:shadow-md cursor-pointer",
                                                         bookmark.collectionId === "youtube" ? "border-red-200 dark:border-red-900/50" : "border-border"
                                                     )}
-                                                        onClick={() => window.open(bookmark.url, "_blank")}
+                                                        onClick={() => setEditingBookmark(bookmark)}
                                                     >
                                                         <div className="flex items-start gap-1.5 min-w-0">
                                                             {bookmark.collectionId === "youtube" ? (
@@ -260,6 +305,60 @@ export function ScheduleContent() {
                         </div>
                     </div>
                 </>
+            )}
+
+            <AddBookmarkDialog
+                open={!!editingBookmark}
+                onOpenChange={(open) => { if (!open) setEditingBookmark(null); }}
+                bookmark={editingBookmark ?? undefined}
+            />
+
+            {pickerSlot && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[1px]"
+                    onClick={() => setPickerSlot(null)}
+                >
+                    <div
+                        className="bg-card border rounded-lg shadow-xl w-80 max-h-[400px] flex flex-col"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-3 border-b">
+                            <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                                Schedule for {format(pickerSlot.day, "EEE d")} at {format(new Date(new Date().setHours(pickerSlot.hour, 0, 0, 0)), "ha")}
+                            </p>
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search bookmarks…"
+                                value={pickerSearch}
+                                onChange={e => setPickerSearch(e.target.value)}
+                                className="w-full text-sm border rounded-md px-2.5 py-1.5 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                        </div>
+                        <div className="overflow-y-auto flex-1 py-1">
+                            {filteredUnscheduled.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-6">No unscheduled bookmarks</p>
+                            ) : (
+                                filteredUnscheduled.map(bookmark => (
+                                    <button
+                                        key={bookmark.id}
+                                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-accent text-left transition-colors"
+                                        onClick={() => handleScheduleBookmark(bookmark.id)}
+                                    >
+                                        {bookmark.favicon
+                                            ? <img src={bookmark.favicon} className="size-4 rounded-sm shrink-0" alt="" />
+                                            : <div className="size-4 rounded-sm bg-muted shrink-0" />
+                                        }
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium truncate">{bookmark.title}</p>
+                                            <p className="text-[11px] text-muted-foreground truncate">{bookmark.url}</p>
+                                        </div>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

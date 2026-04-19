@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
 import { useTagsStore } from "@/store/tags-store";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AddBookmarkDialogProps {
@@ -27,6 +27,7 @@ interface AddBookmarkDialogProps {
 export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkDialogProps & { bookmark?: import("@/types").Bookmark }) {
   const addBookmark = useBookmarksStore((state) => state.addBookmark);
   const updateBookmark = useBookmarksStore((state) => state.updateBookmark);
+  const trashBookmark = useBookmarksStore((state) => state.trashBookmark);
   const { collections, addCollection } = useCollectionsStore();
   const { tags: allTags } = useTagsStore();
   const [isLoading, setIsLoading] = useState(false);
@@ -233,6 +234,17 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
       console.error("Error calculating end time", e);
     }
     return formData.endAt;
+  };
+
+  const handleDelete = async () => {
+    if (!bookmark) return;
+    try {
+      await trashBookmark(bookmark.id);
+      toast.success("Bookmark deleted");
+      onOpenChange(false);
+    } catch {
+      toast.error("Failed to delete bookmark");
+    }
   };
 
   const toggleTag = (tagId: string) => {
@@ -460,6 +472,12 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
           </div>
 
           <DialogFooter>
+            {bookmark && (
+              <Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading} className="mr-auto">
+                <Trash2 className="size-4 mr-2" />
+                Delete
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
