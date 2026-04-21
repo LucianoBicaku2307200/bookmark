@@ -3,9 +3,10 @@
 This document provides step-by-step instructions for setting up Supabase for your bookmarks application.
 
 ## Prerequisites
-
+ 
 - A Supabase account (sign up at [supabase.com](https://supabase.com))
 - Node.js and npm installed
+
 
 ## Step 1: Create a Supabase Project
 
