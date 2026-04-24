@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Code,
   Folder,
+  Heart,
   Palette,
   Search,
   Settings2,
@@ -47,6 +48,7 @@ const collectionIcons: Record<string, React.ElementType> = {
 };
 
 const navItems = [
+  { icon: Heart, label: "Favourites", href: "/favorites" },
   { icon: Calendar, label: "Schedule", href: "/schedule" },
 ];
 
