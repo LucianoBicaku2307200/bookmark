@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   Code,
+  FileText,
   Folder,
   Heart,
   Palette,
@@ -50,6 +51,7 @@ const collectionIcons: Record<string, React.ElementType> = {
 const navItems = [
   { icon: Heart, label: "Favourites", href: "/favorites" },
   { icon: Calendar, label: "Schedule", href: "/schedule" },
+  { icon: FileText, label: "Notes", href: "/notes" },
 ];
 
 export function BookmarksSidebar({

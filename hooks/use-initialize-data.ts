@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
 import { useTagsStore } from "@/store/tags-store";
+import { useNotesStore } from "@/store/notes-store";
 import { useAuth } from "@/components/auth/auth-provider";
 
 export function useInitializeData() {
@@ -11,13 +12,14 @@ export function useInitializeData() {
   const fetchBookmarks = useBookmarksStore((state) => state.fetchBookmarks);
   const fetchCollections = useCollectionsStore((state) => state.fetchCollections);
   const fetchTags = useTagsStore((state) => state.fetchTags);
+  const fetchNotes = useNotesStore((state) => state.fetchNotes);
 
   useEffect(() => {
-    // Only fetch data if user is authenticated
     if (!authLoading && user) {
       fetchBookmarks();
       fetchCollections();
       fetchTags();
+      fetchNotes();
     }
-  }, [user, authLoading, fetchBookmarks, fetchCollections, fetchTags]);
+  }, [user, authLoading, fetchBookmarks, fetchCollections, fetchTags, fetchNotes]);
 }

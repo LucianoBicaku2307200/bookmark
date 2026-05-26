@@ -18,7 +18,8 @@ export async function GET() {
       .select(
         `
         *,
-        bookmark_tags(count)
+        bookmark_tags(count),
+        note_tags(count)
       `
       )
       .eq("user_id", user.id)
@@ -33,7 +34,8 @@ export async function GET() {
       id: tag.id,
       name: tag.name,
       color: tag.color,
-      count: tag.bookmark_tags?.[0]?.count || 0,
+      count:
+        (tag.bookmark_tags?.[0]?.count || 0) + (tag.note_tags?.[0]?.count || 0),
     }));
 
     return NextResponse.json({ tags: transformedTags }, { status: 200 });

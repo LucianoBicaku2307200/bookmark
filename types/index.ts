@@ -29,3 +29,12 @@ export type Tag = {
   color: string;
   count: number;
 };
+
+export type Note = {
+  id: string;
+  title: string;
+  content: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+};
