@@ -5,9 +5,59 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { LogOut, Plus, Search } from "lucide-react";
 import { useNotesStore } from "@/store/notes-store";
+import { useAuth } from "@/components/auth/auth-provider";
 import { NoteSheet } from "@/components/notes/note-sheet";
-import { Plus, Search } from "lucide-react";
+
+function UserProfileDropdown() {
+  const { user, signOut } = useAuth();
+
+  if (!user) return null;
+
+  const getInitials = (email: string) => email.substring(0, 2).toUpperCase();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Avatar className="size-8">
+            <AvatarFallback className="text-xs">
+              {getInitials(user.email || "U")}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">
+              {user.user_metadata?.full_name || "User"}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={signOut}>
+          <LogOut className="mr-2 size-4" />
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function NotesHeader() {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -34,10 +84,16 @@ export function NotesHeader() {
               />
             </div>
 
-            <Button size="sm" onClick={() => setSheetOpen(true)}>
+            <Button size="sm" className="flex" onClick={() => setSheetOpen(true)}>
               <Plus className="size-4" />
-              New Note
+              <span className="hidden sm:inline ml-2">New Note</span>
             </Button>
+
+            <Separator orientation="vertical" className="h-5 hidden sm:block" />
+
+            <UserProfileDropdown />
+
+            <ThemeToggle />
           </div>
         </div>
       </header>
