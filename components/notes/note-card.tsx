@@ -31,7 +31,7 @@ export function NoteCard({ note }: NoteCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            className="size-7"
             onClick={() => setSheetOpen(true)}
           >
             <Pencil className="size-3.5" />
