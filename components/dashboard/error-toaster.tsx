@@ -5,11 +5,13 @@ import { toast } from "sonner";
 import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
 import { useTagsStore } from "@/store/tags-store";
+import { useDailyTrackStore } from "@/store/daily-track-store";
 
 export function ErrorToaster() {
     const bookmarksError = useBookmarksStore((state) => state.error);
     const collectionsError = useCollectionsStore((state) => state.error);
     const tagsError = useTagsStore((state) => state.error);
+    const dailyTrackError = useDailyTrackStore((state) => state.error);
 
     useEffect(() => {
         if (bookmarksError) {
@@ -28,6 +30,12 @@ export function ErrorToaster() {
             toast.error(tagsError);
         }
     }, [tagsError]);
+
+    useEffect(() => {
+        if (dailyTrackError) {
+            toast.error(dailyTrackError);
+        }
+    }, [dailyTrackError]);
 
     return null;
 }

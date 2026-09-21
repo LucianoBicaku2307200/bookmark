@@ -35,7 +35,7 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getSession();
 
   // Protected routes - redirect to login if not authenticated
-  const protectedRoutes = ["/", "/favorites", "/archive", "/trash"];
+  const protectedRoutes = ["/", "/favorites", "/archive", "/trash", "/daily-track"];
   const isProtectedRoute = protectedRoutes.some((route) => {
     if (route === "/") {
       return request.nextUrl.pathname === "/";

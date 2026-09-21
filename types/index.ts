@@ -38,3 +38,24 @@ export type Note = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ActivityType = "number" | "checkbox";
+
+export type Activity = {
+  id: string;
+  name: string;
+  type: ActivityType;
+  color: string;
+};
+
+export type EntryValue = number | boolean;
+
+export type Entry = {
+  date: string;
+  values: Record<string, EntryValue>;
+};
+
+export type TrackerData = {
+  activities: Activity[];
+  entries: Entry[];
+};

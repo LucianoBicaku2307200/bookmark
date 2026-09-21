@@ -18,6 +18,7 @@ import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
 import { useTagsStore } from "@/store/tags-store";
 import {
+  Activity,
   Bookmark,
   BookOpen,
   Calendar,
@@ -52,6 +53,7 @@ const navItems = [
   { icon: Heart, label: "Favourites", href: "/favorites" },
   { icon: Calendar, label: "Schedule", href: "/schedule" },
   { icon: FileText, label: "Notes", href: "/notes" },
+  { icon: Activity, label: "Daily Track", href: "/daily-track" },
 ];
 
 export function BookmarksSidebar({

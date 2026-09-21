@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import { Note } from "@/types";
 import { useTagsStore } from "@/store/tags-store";
 import { NoteSheet } from "@/components/notes/note-sheet";
@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { Pencil, Tag } from "lucide-react";
+import { Check, Copy, Pencil, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface NoteCardProps {
   note: Note;
@@ -22,7 +23,34 @@ interface NoteCardProps {
 export function NoteCard({ note }: NoteCardProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { getTagById } = useTagsStore();
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeout.current) clearTimeout(copyTimeout.current);
+    };
+  }, []);
+
+  const handleCopy = async (e: MouseEvent) => {
+    e.stopPropagation();
+
+    if (!note.content) {
+      toast.error("Note is empty");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(note.content);
+      setCopied(true);
+      toast.success("Note copied");
+      if (copyTimeout.current) clearTimeout(copyTimeout.current);
+      copyTimeout.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy note");
+    }
+  };
 
   const noteTags = note.tags
     .map((id) => getTagById(id))
@@ -38,17 +66,33 @@ export function NoteCard({ note }: NoteCardProps) {
           <h3 className="font-semibold text-sm leading-snug line-clamp-2 flex-1">
             {note.title}
           </h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSheetOpen(true);
-            }}
-          >
-            <Pencil className="size-3.5" />
-          </Button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Copy note content"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Edit note"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSheetOpen(true);
+              }}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+          </div>
         </div>
 
         {note.content && (
