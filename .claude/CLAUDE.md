@@ -119,3 +119,11 @@ Decisions:
 - The list no longer slices to 7 — it shows every logged day inside the range, capped visually by `max-h-[420px] overflow-y-auto`.
 Files touched: components/daily-track/{recent-days,daily-track-content}.tsx
 - Follow-up: with no range picked the card falls back to the last 7 logged days (`DEFAULT_DAYS`), title included; an explicit range shows every day inside it.
+
+### Auth Redirects — 2026-09-24
+Goal: Unauthenticated page requests redirect to /login.
+Decisions:
+- proxy.ts inverted from an allowlist of protected routes to "everything except /login, /signup, /api" (old list missed /notes, /schedule); /api routes keep returning 401 JSON instead of redirecting.
+- getSession() → getUser() so the cookie is verified server-side.
+- Matcher now also skips .js/.json/.ico/.webmanifest so the PWA service worker and manifest aren't redirected.
+Files touched: proxy.ts

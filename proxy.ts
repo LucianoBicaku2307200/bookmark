@@ -29,33 +29,22 @@ export default async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Protected routes - redirect to login if not authenticated
-  const protectedRoutes = ["/", "/favorites", "/archive", "/trash", "/daily-track"];
-  const isProtectedRoute = protectedRoutes.some((route) => {
-    if (route === "/") {
-      return request.nextUrl.pathname === "/";
-    }
-    return request.nextUrl.pathname.startsWith(route);
-  });
+  const { pathname } = request.nextUrl;
+  const authRoutes = ["/login", "/signup"];
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  const isApiRoute = pathname.startsWith("/api");
 
-  if (isProtectedRoute && !session) {
+  if (!user && !isAuthRoute && !isApiRoute) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect to home if already logged in and trying to access auth pages
-  const authRoutes = ["/login", "/signup"];
-  const isAuthRoute = authRoutes.some((route) =>
-    request.nextUrl.pathname.startsWith(route)
-  );
-
-  if (isAuthRoute && session) {
+  if (user && isAuthRoute) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/";
     return NextResponse.redirect(redirectUrl);
@@ -73,6 +62,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public files (public folder)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|js|json|ico|webmanifest)$).*)",
   ],
 };
