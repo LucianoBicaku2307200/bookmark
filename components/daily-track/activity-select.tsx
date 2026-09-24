@@ -6,6 +6,7 @@ import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
     DropdownMenuContent,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown } from "lucide-react";
@@ -14,11 +15,13 @@ export function ActivitySelect({
     activities,
     hidden,
     onToggle,
+    onToggleAll,
     noun,
 }: {
     activities: Activity[];
     hidden: Set<string>;
     onToggle: (id: string, visible: boolean) => void;
+    onToggleAll: (visible: boolean) => void;
     noun: string;
 }) {
     if (activities.length === 0) return null;
@@ -43,6 +46,14 @@ export function ActivitySelect({
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuCheckboxItem
+                    checked={visible.length === activities.length}
+                    onSelect={(event) => event.preventDefault()}
+                    onCheckedChange={onToggleAll}
+                >
+                    <span className="font-medium">All {noun}</span>
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
                 {activities.map((activity) => (
                     <DropdownMenuCheckboxItem
                         key={activity.id}

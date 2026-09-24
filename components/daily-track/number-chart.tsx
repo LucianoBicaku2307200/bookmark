@@ -107,7 +107,7 @@ export function NumberChart({
                         />
                     }
                 />
-                <ChartLegend content={<ChartLegendContent />} />
+                <ChartLegend content={<ChartLegendContent className="flex-wrap" />} />
                 {ordered.map((activity) => (
                     <Area
                         key={activity.id}

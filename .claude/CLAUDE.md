@@ -1,7 +1,7 @@
 # Project Context — bookmarks
 
 ## Last Updated
-2026-09-21
+2026-09-24
 
 ## Stack
 - Next.js 16.1.5 (App Router) + React 19
@@ -89,3 +89,33 @@ Decisions:
 - Deltas rounded via `Number(v.toFixed(6))` in daily-entry-form, applied to the saved value too so noise never reaches Postgres.
 - `dark:bg-input/30` in components/ui/checkbox.tsx scoped to `data-[state=unchecked]`: it ties on specificity with `data-[state=checked]:bg-primary` and Tailwind emits `dark:` last, so checked boxes kept the dark bg and the primary-foreground icon vanished. Affects every checkbox in the app.
 Files touched: supabase/daily-track-migration.sql, supabase/daily-track-fix-entry-check.sql, components/daily-track/daily-entry-form.tsx, components/ui/checkbox.tsx
+
+### Daily Track UX Pass — 2026-09-24
+Goal: Total-only logging, select-all activity filters, log-day moved into a header-triggered dialog, recent-days list with edit/delete.
+Deliverables:
+- components/daily-track/log-day-dialog.tsx (store-driven Dialog wrapping DailyEntryForm)
+- components/daily-track/recent-days.tsx (last 7 logged days in range, edit + delete)
+Decisions:
+- "Change" mode removed from daily-entry-form; inputs are always running totals and `toStored` keeps subtracting `totalsBefore` — storage is still a per-day delta, only the UI changed.
+- Dialog state (`logDate` + openLogDay/closeLogDay) lives in daily-track-store so the header CTA and the recent-days edit button drive the same dialog; the form is remounted with `key={logDate}` because its date is internal state.
+- `toggleAll` in daily-track-content is scoped to the passed group: `hidden` is one Set shared by both ActivitySelects, so a blanket clear/fill would wipe the other chart's filter.
+- Delete = saveDay(date, all-null values); the entries POST turns nulls into a scoped delete and the store drops an entry whose values come back empty.
+- RecentDays filters by resolveRange(range, entries) then slice(-7).reverse() — entries are stored ascending.
+Files touched: store/daily-track-store.ts, components/daily-track/{daily-entry-form,daily-track-header,daily-track-content,activity-select}.tsx, + the two new files
+
+### Daily Track Layout Pass — 2026-09-24
+Goal: Wider two-column log dialog with activity search and mobile scrolling, accordion log rows, wrapping chart legend.
+Decisions:
+- Log dialog is `sm:max-w-2xl` + `max-h-[90vh]`; the field grid (`sm:grid-cols-2`, `max-h-[55vh] overflow-y-auto`) is the only scroll region — nesting a second one on DialogContent pushed Save below the fold on short viewports.
+- The dialog search filters rendered fields only; `dirty` and submit still iterate every activity, so a filtered-out field is never wiped.
+- RecentDays rows collapse to date + edit/delete; values live in the expanded panel (plain useState toggle — no Radix accordion in components/ui).
+- Chart legend gets `flex-wrap` via ChartLegendContent's className rather than editing components/ui/chart.tsx; recharts measures the rendered legend box, so the wrapped rows reserve their own height.
+Files touched: components/daily-track/{daily-entry-form,log-day-dialog,recent-days,number-chart}.tsx
+
+### Recent Days Title — 2026-09-24
+Goal: The logged-days card title follows the header range picker instead of being fixed at 7.
+Decisions:
+- `recentDaysTitle(range)` in recent-days.tsx: preset ranges ending today read "Last N logged days", any other from/to pair reads "Jun 1 – Jun 20", an empty range reads "All logged days".
+- The list no longer slices to 7 — it shows every logged day inside the range, capped visually by `max-h-[420px] overflow-y-auto`.
+Files touched: components/daily-track/{recent-days,daily-track-content}.tsx
+- Follow-up: with no range picked the card falls back to the last 7 logged days (`DEFAULT_DAYS`), title included; an explicit range shows every day inside it.

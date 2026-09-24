@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Activity } from "@/types";
 import { useDailyTrackStore } from "@/store/daily-track-store";
 import { eachDayInRange, resolveRange } from "@/lib/daily-track/chart-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ActivitySelect } from "./activity-select";
-import { DailyEntryForm } from "./daily-entry-form";
+import { RecentDays, recentDaysTitle } from "./recent-days";
 import { HabitHeatmap } from "./habit-heatmap";
 import { NumberChart } from "./number-chart";
 import { SegmentedToggle } from "./segmented-toggle";
@@ -47,6 +48,17 @@ export function DailyTrackContent() {
             return next;
         });
 
+    // Scoped to the group's own ids: both dropdowns share one hidden Set.
+    const toggleAll = (group: Activity[], visible: boolean) =>
+        setHidden((current) => {
+            const next = new Set(current);
+            for (const activity of group) {
+                if (visible) next.delete(activity.id);
+                else next.add(activity.id);
+            }
+            return next;
+        });
+
     if (loading) {
         return (
             <div className="flex-1 overflow-y-auto w-full px-4 pb-4">
@@ -81,6 +93,9 @@ export function DailyTrackContent() {
                                     activities={numberActivities}
                                     hidden={hidden}
                                     onToggle={toggle}
+                                    onToggleAll={(visible) =>
+                                        toggleAll(numberActivities, visible)
+                                    }
                                     noun="values"
                                 />
                             </div>
@@ -102,6 +117,9 @@ export function DailyTrackContent() {
                                 activities={checkboxActivities}
                                 hidden={hidden}
                                 onToggle={toggle}
+                                onToggleAll={(visible) =>
+                                    toggleAll(checkboxActivities, visible)
+                                }
                                 noun="habits"
                             />
                         </CardHeader>
@@ -117,10 +135,10 @@ export function DailyTrackContent() {
 
                 <Card className="h-fit">
                     <CardHeader>
-                        <CardTitle>Log a day</CardTitle>
+                        <CardTitle>{recentDaysTitle(range)}</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <DailyEntryForm entries={entries} activities={activities} />
+                        <RecentDays entries={entries} activities={activities} />
                     </CardContent>
                 </Card>
             </div>

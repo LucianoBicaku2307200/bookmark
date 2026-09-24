@@ -1,15 +1,18 @@
 import { create } from "zustand";
 import { Activity, ActivityType, Entry, EntryValue } from "@/types";
-import { DateRange } from "@/lib/daily-track/chart-data";
+import { DateRange, toDateKey } from "@/lib/daily-track/chart-data";
 
 interface DailyTrackState {
   activities: Activity[];
   entries: Entry[];
   range: DateRange;
+  logDate: string | null;
   loading: boolean;
   error: string | null;
 
   setRange: (range: DateRange) => void;
+  openLogDay: (date?: string) => void;
+  closeLogDay: () => void;
   fetchDailyTrack: () => Promise<void>;
   createActivity: (name: string, type: ActivityType, color?: string) => Promise<void>;
   renameActivity: (id: string, name: string) => Promise<void>;
@@ -25,10 +28,15 @@ export const useDailyTrackStore = create<DailyTrackState>((set, get) => ({
   activities: [],
   entries: [],
   range: {},
+  logDate: null,
   loading: false,
   error: null,
 
   setRange: (range) => set({ range }),
+
+  openLogDay: (date) => set({ logDate: date ?? toDateKey(new Date()) }),
+
+  closeLogDay: () => set({ logDate: null }),
 
   fetchDailyTrack: async () => {
     set({ loading: true, error: null });

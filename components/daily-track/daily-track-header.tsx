@@ -14,11 +14,12 @@ import {
     DropdownMenuSeparator,
     DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { ListChecks, LogOut } from "lucide-react";
+import { ListChecks, LogOut, Plus } from "lucide-react";
 import { useDailyTrackStore } from "@/store/daily-track-store";
 import { useAuth } from "@/components/auth/auth-provider";
 import { DateRangePicker } from "./date-range-picker";
 import { ActivityManager } from "./activity-manager";
+import { LogDayDialog } from "./log-day-dialog";
 
 function UserProfileDropdown() {
     const { user, signOut } = useAuth();
@@ -61,7 +62,7 @@ function UserProfileDropdown() {
 
 export function DailyTrackHeader() {
     const [managerOpen, setManagerOpen] = useState(false);
-    const { activities, entries, range, setRange } = useDailyTrackStore();
+    const { activities, entries, range, setRange, openLogDay } = useDailyTrackStore();
 
     return (
         <>
@@ -82,6 +83,11 @@ export function DailyTrackHeader() {
 
                     <div className="flex items-center gap-2">
                         <DateRangePicker range={range} onChange={setRange} />
+
+                        <Button size="sm" onClick={() => openLogDay()}>
+                            <Plus className="size-4" />
+                            <span className="hidden sm:inline ml-2">Log day</span>
+                        </Button>
 
                         <Button
                             size="sm"
@@ -106,6 +112,8 @@ export function DailyTrackHeader() {
                 onOpenChange={setManagerOpen}
                 activities={activities}
             />
+
+            <LogDayDialog />
         </>
     );
 }

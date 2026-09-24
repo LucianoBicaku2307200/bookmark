@@ -12,7 +12,6 @@ import {
 } from "@/lib/daily-track/chart-data";
 import { useDailyTrackStore } from "@/store/daily-track-store";
 import { MonthGrid } from "./month-grid";
-import { SegmentedToggle } from "./segmented-toggle";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -22,9 +21,7 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CalendarDays, Loader2 } from "lucide-react";
-
-type Mode = "change" | "total";
+import { CalendarDays, Loader2, Search } from "lucide-react";
 
 type Draft = Record<string, string | boolean>;
 
@@ -40,18 +37,30 @@ function storedValues(entries: Entry[], date: string): Record<string, EntryValue
 export function DailyEntryForm({
     entries,
     activities,
+    initialDate,
+    onSaved,
 }: {
     entries: Entry[];
     activities: Activity[];
+    initialDate?: string;
+    onSaved?: () => void;
 }) {
     const saveDay = useDailyTrackStore((state) => state.saveDay);
 
-    const [date, setDate] = useState(() => toDateKey(new Date()));
-    const [mode, setMode] = useState<Mode>("change");
-    const [month, setMonth] = useState(() => startOfMonth(new Date()));
+    const [date, setDate] = useState(() => initialDate ?? toDateKey(new Date()));
+    const [month, setMonth] = useState(() => startOfMonth(fromDateKey(date)));
     const [draft, setDraft] = useState<Draft>({});
+    const [search, setSearch] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [savedAt, setSavedAt] = useState(false);
+
+    // Search narrows the fields on screen only; saving still covers every activity.
+    const visible = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return activities;
+        return activities.filter((activity) =>
+            activity.name.toLowerCase().includes(term)
+        );
+    }, [activities, search]);
 
     const stored = useMemo(() => storedValues(entries, date), [entries, date]);
     const priorTotals = useMemo(() => totalsBefore(entries, date), [entries, date]);
@@ -66,7 +75,7 @@ export function DailyEntryForm({
     const activitiesRef = useRef(activities);
     activitiesRef.current = activities;
 
-    // Draft resets only when the date, the activity list or the mode changes.
+    // Draft resets only when the date or the activity list changes.
     useEffect(() => {
         const current = entriesRef.current;
         const currentStored = storedValues(current, date);
@@ -78,19 +87,15 @@ export function DailyEntryForm({
             if (activity.type === "checkbox") {
                 next[activity.id] = raw === true;
             } else if (typeof raw === "number") {
-                next[activity.id] =
-                    mode === "total"
-                        ? String(roundDelta(raw + (currentPrior[activity.id] ?? 0)))
-                        : String(raw);
+                next[activity.id] = String(roundDelta(raw + (currentPrior[activity.id] ?? 0)));
             } else {
                 next[activity.id] = "";
             }
         }
         setDraft(next);
-        setSavedAt(false);
-    }, [activityKey, date, mode]);
+    }, [activityKey, date]);
 
-    // Compared in stored terms so Total mode never falsely reads as dirty.
+    // Typed values are running totals; entries store the day's delta.
     const toStored = (activity: Activity): EntryValue | null | undefined => {
         const value = draft[activity.id];
 
@@ -104,9 +109,7 @@ export function DailyEntryForm({
         const parsed = Number(text);
         if (!Number.isFinite(parsed)) return undefined;
 
-        return mode === "total"
-            ? roundDelta(parsed - (priorTotals[activity.id] ?? 0))
-            : parsed;
+        return roundDelta(parsed - (priorTotals[activity.id] ?? 0));
     };
 
     const dirty = activities.some((activity) => {
@@ -129,7 +132,7 @@ export function DailyEntryForm({
                 values[activity.id] = next;
             }
             await saveDay(date, values);
-            setSavedAt(true);
+            onSaved?.();
         } catch {
             toast.error("Failed to save day");
         } finally {
@@ -146,8 +149,8 @@ export function DailyEntryForm({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex items-center justify-between gap-2">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button type="button" variant="outline" size="sm" className="gap-2">
@@ -189,18 +192,19 @@ export function DailyEntryForm({
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                <SegmentedToggle<Mode>
-                    value={mode}
-                    onChange={setMode}
-                    options={[
-                        { value: "change", label: "Change" },
-                        { value: "total", label: "Total" },
-                    ]}
-                />
+                <div className="relative min-w-[8rem] flex-1">
+                    <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search activities"
+                        className="h-8 pl-8"
+                    />
+                </div>
             </div>
 
-            <div className="space-y-3">
-                {activities.map((activity) => {
+            <div className="grid max-h-[55vh] grid-cols-1 gap-x-4 gap-y-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                {visible.map((activity) => {
                     const prior = roundDelta(priorTotals[activity.id] ?? 0);
                     const raw = String(draft[activity.id] ?? "").trim();
                     const parsed = Number(raw);
@@ -247,29 +251,26 @@ export function DailyEntryForm({
                                             }))
                                         }
                                     />
-                                    {mode === "total" && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {delta === null
-                                                ? `was ${prior}`
-                                                : `${delta >= 0 ? "+" : ""}${delta} from ${prior}`}
-                                        </p>
-                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                        {delta === null
+                                            ? `was ${prior}`
+                                            : `${delta >= 0 ? "+" : ""}${delta} from ${prior}`}
+                                    </p>
                                 </>
                             )}
                         </div>
                     );
                 })}
-            </div>
 
-            <div className="flex items-center gap-3">
-                <Button type="submit" size="sm" disabled={!dirty || isLoading}>
-                    {isLoading && <Loader2 className="size-4 animate-spin" />}
-                    {isLoading ? "Saving…" : "Save day"}
-                </Button>
-                {savedAt && !dirty && (
-                    <span className="text-xs text-muted-foreground">✓ Saved</span>
+                {visible.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No activities match.</p>
                 )}
             </div>
+
+            <Button type="submit" size="sm" className="self-start" disabled={!dirty || isLoading}>
+                {isLoading && <Loader2 className="size-4 animate-spin" />}
+                {isLoading ? "Saving…" : "Save day"}
+            </Button>
         </form>
     );
 }
