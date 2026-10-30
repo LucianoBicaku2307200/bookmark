@@ -4,10 +4,10 @@ const nextConfig: NextConfig = {
   images: {
      remotePatterns: [
       {
-        protocol: 'https', // Only allows images from HTTPS URLs
-        hostname: '**', // Wildcard to match any hostname
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
         port: '',
-        pathname: '/**', // Wildcard to match any path
+        pathname: '/**',
       },
     ],
   },
@@ -21,8 +21,18 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   reloadOnOnline: true,
   swcMinify: true,
   disable: process.env.NODE_ENV === "development",
+  extendDefaultRuntimeCaching: true,
   workboxOptions: {
     disableDevLogs: true,
+    // Replaces the default "apis" rule: per-user API responses must not outlive sign-out in Cache Storage.
+    runtimeCaching: [
+      {
+        urlPattern: ({ sameOrigin, url: { pathname } }: { sameOrigin: boolean; url: URL }) =>
+          sameOrigin && pathname.startsWith("/api/"),
+        handler: "NetworkOnly",
+        options: { cacheName: "apis" },
+      },
+    ],
   },
 });
 

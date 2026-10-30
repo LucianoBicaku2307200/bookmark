@@ -51,7 +51,7 @@ export function BookmarkCard({
   };
 
   const handleOpenUrl = () => {
-    window.open(bookmark.url, "_blank");
+    window.open(bookmark.url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -80,6 +80,7 @@ export function BookmarkCard({
             ) : (
               <Image
                 src={bookmark.favicon}
+                unoptimized
                 alt={bookmark.title}
                 width={24}
                 height={24}
@@ -261,6 +262,7 @@ export function BookmarkCard({
                 <div className="size-12 rounded-xl bg-background shadow-sm flex items-center justify-center">
                   <Image
                     src={bookmark.favicon}
+                    unoptimized
                     alt={bookmark.title}
                     width={32}
                     height={32}

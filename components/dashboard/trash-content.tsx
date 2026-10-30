@@ -25,6 +25,7 @@ function TrashedBookmarkCard({ bookmark }: { bookmark: Bookmark }) {
       <div className="size-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
         <Image
           src={bookmark.favicon}
+          unoptimized
           alt={bookmark.title}
           width={24}
           height={24}
@@ -54,7 +55,7 @@ function TrashedBookmarkCard({ bookmark }: { bookmark: Bookmark }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
-              onClick={() => window.open(bookmark.url, "_blank")}
+              onClick={() => window.open(bookmark.url, "_blank", "noopener,noreferrer")}
             >
               <ExternalLink className="size-4 mr-2" />
               Open URL

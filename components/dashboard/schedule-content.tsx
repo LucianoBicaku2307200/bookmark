@@ -287,7 +287,7 @@ export function ScheduleContent() {
                                                                 className="size-6"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    window.open(bookmark.url, "_blank");
+                                                                    window.open(bookmark.url, "_blank", "noopener,noreferrer");
                                                                 }}
                                                             >
                                                                 <ExternalLink className="size-3" />

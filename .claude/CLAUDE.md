@@ -1,10 +1,10 @@
 # Project Context — bookmarks
 
 ## Last Updated
-2026-09-24
+2026-10-30
 
 ## Stack
-- Next.js 16.1.5 (App Router) + React 19
+- Next.js 16.4.3 (App Router) + React 19
 - Supabase (Postgres + Auth + RLS) via @supabase/ssr
 - Zustand 5 (5 stores: bookmarks, collections, tags, notes, daily-track)
 - Tailwind CSS v4 (no config file)
@@ -134,3 +134,14 @@ Decisions:
 - `readOnly` prop on AddBookmarkDialog; fields wrapped in `<fieldset disabled className="contents">`, footer shows only Close.
 - Description textarea uses `field-sizing-content min-h-24 max-h-64` to grow with text.
 Files touched: components/dashboard/{add-bookmark-dialog,bookmark-card}.tsx
+
+### Security Audit + High/Medium Fixes — 2026-10-30
+Goal: Vulnerability review of the app; fix the high and medium findings.
+Decisions:
+- Live RLS probed with anon key: every table returns []. Repo SQL lags live DB (start_at/end_at missing from schema.sql).
+- next 16.1.5 → 16.4.3 (exact pin, eslint-config-next matched); clears image-optimizer RCE advisories and sharp libvips CVEs.
+- remotePatterns narrowed to i.ytimg.com; favicon `<Image>`s are `unoptimized` because favicon URLs are user-supplied (Google s2 or arbitrary) and must not go through /_next/image.
+- PWA: `extendDefaultRuntimeCaching: true` + a custom rule with cacheName "apis" replaces next-pwa's default NetworkFirst /api/ cache with NetworkOnly; signOut also deletes the "apis" cache left by older service workers.
+- window.open(bookmark.url) calls get "noopener,noreferrer" (reverse tabnabbing).
+- Low items left open: http(s)-only URL validation, activity.color validation, PostgREST `.or()` search escaping, cross-tenant FK refs in junction-table RLS, handle_new_user search_path, security headers, unused /api/auth/{signin,session} returning tokens, raw DB error messages.
+Files touched: package.json, package-lock.json, next.config.ts, components/auth/auth-provider.tsx, components/dashboard/{bookmark-card,archive-content,trash-content,schedule-content}.tsx, public/sw.js + workbox chunk (build output)
