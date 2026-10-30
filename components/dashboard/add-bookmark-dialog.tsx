@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useBookmarksStore } from "@/store/bookmarks-store";
 import { useCollectionsStore } from "@/store/collections-store";
 import { useTagsStore } from "@/store/tags-store";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AddBookmarkDialogProps {
@@ -24,7 +24,7 @@ interface AddBookmarkDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkDialogProps & { bookmark?: import("@/types").Bookmark }) {
+export function AddBookmarkDialog({ open, onOpenChange, bookmark, readOnly = false, onEdit }: AddBookmarkDialogProps & { bookmark?: import("@/types").Bookmark; readOnly?: boolean; onEdit?: () => void }) {
   const addBookmark = useBookmarksStore((state) => state.addBookmark);
   const updateBookmark = useBookmarksStore((state) => state.updateBookmark);
   const trashBookmark = useBookmarksStore((state) => state.trashBookmark);
@@ -162,7 +162,7 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (isLoading || readOnly) return;
 
     setIsLoading(true);
     try {
@@ -258,14 +258,15 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="pretty-scrollbar max-w-2xl min-h-[70vh] max-h-[92vh] overflow-y-auto content-start">
         <DialogHeader>
-          <DialogTitle>{bookmark ? "Edit Bookmark" : "Add New Bookmark"}</DialogTitle>
+          <DialogTitle>{readOnly ? "Bookmark Details" : bookmark ? "Edit Bookmark" : "Add New Bookmark"}</DialogTitle>
           <DialogDescription>
-            {bookmark ? "Update the details of your bookmark below." : "Add a new bookmark to your collection. Fill in the details below."}
+            {readOnly ? "Full details of your bookmark." : bookmark ? "Update the details of your bookmark below." : "Add a new bookmark to your collection. Fill in the details below."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
+          <fieldset disabled={readOnly} className="contents">
           <div className="grid gap-4 py-4">
 
             <div className="flex items-center gap-2 mb-2">
@@ -332,12 +333,13 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
 
             <div className="grid gap-2">
               <Label htmlFor="description">Description *</Label>
-              <Input
+              <textarea
                 id="description"
                 placeholder="Brief description of the bookmark"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 required
+                className="pretty-scrollbar field-sizing-content min-h-32 max-h-72 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
 
@@ -470,27 +472,44 @@ export function AddBookmarkDialog({ open, onOpenChange, bookmark }: AddBookmarkD
               )}
             </div>
           </div>
+          </fieldset>
 
           <DialogFooter>
-            {bookmark && (
-              <Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading} className="mr-auto">
-                <Trash2 className="size-4 mr-2" />
-                Delete
-              </Button>
+            {readOnly ? (
+              <>
+                {onEdit && (
+                  <Button type="button" onClick={onEdit}>
+                    <Pencil className="size-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Close
+                </Button>
+              </>
+            ) : (
+              <>
+                {bookmark && (
+                  <Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading} className="mr-auto">
+                    <Trash2 className="size-4 mr-2" />
+                    Delete
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {bookmark ? "Saving..." : "Adding..."}
+                    </>
+                  ) : (
+                    bookmark ? "Save Changes" : "Add Bookmark"
+                  )}
+                </Button>
+              </>
             )}
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {bookmark ? "Saving..." : "Adding..."}
-                </>
-              ) : (
-                bookmark ? "Save Changes" : "Add Bookmark"
-              )}
-            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Heart,
+  Eye,
   MoreHorizontal,
   ExternalLink,
   Copy,
@@ -40,6 +41,7 @@ export function BookmarkCard({
   const { toggleFavorite, archiveBookmark, trashBookmark } = useBookmarksStore();
   const { tags: allTags } = useTagsStore();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
 
   const bookmarkTags = allTags.filter((tag) => bookmark.tags.includes(tag.id));
   const isYoutube = bookmark.collectionId === "youtube" || !!bookmark.thumbnail || !!bookmark.duration;
@@ -58,6 +60,16 @@ export function BookmarkCard({
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         bookmark={bookmark}
+      />
+      <AddBookmarkDialog
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        bookmark={bookmark}
+        readOnly
+        onEdit={() => {
+          setIsViewOpen(false);
+          setIsEditOpen(true);
+        }}
       />
 
       {variant === "list" ? (
@@ -115,6 +127,13 @@ export function BookmarkCard({
             <Button
               variant="ghost"
               size="icon-xs"
+              onClick={() => setIsViewOpen(true)}
+            >
+              <Eye className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={() => toggleFavorite(bookmark.id)}
             >
               <Heart
@@ -161,6 +180,14 @@ export function BookmarkCard({
       ) : (
         <div className="group relative flex flex-col rounded-xl border bg-card overflow-hidden hover:bg-accent/30 transition-colors">
           <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
+            <Button
+              variant="secondary"
+              size="icon-xs"
+              className="bg-background/80 backdrop-blur-sm"
+              onClick={() => setIsViewOpen(true)}
+            >
+              <Eye className="size-4" />
+            </Button>
             <Button
               variant="secondary"
               size="icon-xs"

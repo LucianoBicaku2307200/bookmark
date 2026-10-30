@@ -127,3 +127,10 @@ Decisions:
 - getSession() → getUser() so the cookie is verified server-side.
 - Matcher now also skips .js/.json/.ico/.webmanifest so the PWA service worker and manifest aren't redirected.
 Files touched: proxy.ts
+
+### Bookmark Quick View — 2026-10-30
+Goal: Eye button beside favourite opens the bookmark dialog read-only; description becomes a textarea in add/edit/view.
+Decisions:
+- `readOnly` prop on AddBookmarkDialog; fields wrapped in `<fieldset disabled className="contents">`, footer shows only Close.
+- Description textarea uses `field-sizing-content min-h-24 max-h-64` to grow with text.
+Files touched: components/dashboard/{add-bookmark-dialog,bookmark-card}.tsx
